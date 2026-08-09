@@ -10,8 +10,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #dfe4ed;
-    --bg-soft: #eef2f7;
+    --bg: #9699a1;
+    --bg-soft: #a8abb3;
     --panel: #121b30;
     --panel2: #0e1626;
     --panel3: #0a101f;
@@ -141,10 +141,6 @@
     color: var(--muted); font-size: 15px; line-height: 1.75;
   }
   .hero-mission strong { color: var(--text); font-weight: 600; }
-  .hero-note {
-    margin: 6px auto 0; max-width: 640px;
-    color: var(--muted2); font-size: 12px; line-height: 1.6; letter-spacing: .2px;
-  }
 
   #layout { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
   #layout.split { grid-template-columns: minmax(0, 1fr) 410px; }
@@ -171,15 +167,7 @@
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-head); font-weight: 800; font-size: 20px; color: #06101f;
   }
-  .welcome h2 { margin: 0 0 8px; font-size: 21px; letter-spacing: .3px; font-family: var(--font-head); font-weight: 700; }
-  .welcome .wsub { margin: 0 auto 18px; max-width: 460px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
-  .welcome .agents-strip { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
-  .welcome .agent-chip {
-    font-size: 11px; font-weight: 600; letter-spacing: .4px;
-    color: var(--accent); border: 1px solid rgba(56,189,248,.3);
-    padding: 4px 10px; border-radius: 999px; background: rgba(56,189,248,.06);
-  }
-  .welcome .arrow { color: var(--muted2); font-size: 12px; }
+  .welcome h2 { margin: 0 0 18px; font-size: 21px; letter-spacing: .3px; font-family: var(--font-head); font-weight: 700; }
   .welcome .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .welcome .actions button { padding: 12px 24px; font-size: 14px; }
 
@@ -325,7 +313,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .error { color: var(--red); }
   .footnote {
-    color: #4a5a73; font-size: 11.5px; margin-top: 16px; text-align: center; line-height: 1.7;
+    color: #333c4d; font-size: 11.5px; margin-top: 16px; text-align: center; line-height: 1.7;
   }
   a { color: var(--accent); }
   @media (prefers-reduced-motion: reduce) {
@@ -340,7 +328,7 @@
     <div class="logo">AIL</div>
     <h1>Athlete Insight Lab</h1>
   </div>
-  <span class="live"><span class="dot"></span>LIVE GOOGLE SHEETS DATA</span>
+  <span class="live"><span class="dot"></span>Fictional wearable data</span>
   <div class="spacer"></div>
   <div class="meta">
     <button id="dashBtn">Dashboard</button>
@@ -354,7 +342,6 @@
     <div class="hero-inner">
       <h2 class="hero-title">Clarity, autonomy, and <span class="grad">understanding.</span></h2>
       <p class="hero-mission">AIL exists to empower runners with <strong>clarity, autonomy, and understanding</strong>. It transforms raw training data into meaningful insights that help athletes make informed decisions about their running journey.</p>
-      <p class="hero-note">This is a prototype. It uses a fictional wearable data source that functions as a live database for simulated sensor ingestion.</p>
     </div>
   </section>
 
@@ -407,14 +394,6 @@
     <div class="welcome" id="welcome">
       <div class="welcome-logo">AIL</div>
       <h2>Ask your live training data anything</h2>
-      <p class="wsub">Your runs, sleep and recovery - answered by five collaborating agents in real time, straight from your live Google Sheets dataset.</p>
-      <div class="agents-strip" aria-hidden="true">
-        <span class="agent-chip">Lumen</span><span class="arrow">&rarr;</span>
-        <span class="agent-chip">Prism</span><span class="arrow">&rarr;</span>
-        <span class="agent-chip">Canvas</span><span class="arrow">&rarr;</span>
-        <span class="agent-chip">Echo</span><span class="arrow">&rarr;</span>
-        <span class="agent-chip">Nexus</span>
-      </div>
       <div class="actions">
         <button class="primary" id="seeDashBtn">View full dashboard</button>
         <button id="askBtn">Ask a question</button>
@@ -1019,6 +998,8 @@ let dashLoaded = false;
 
 function setDashBtnLabel(shown) {
   dashBtn.textContent = shown ? "Hide dashboard" : "Dashboard";
+  const seeDashBtn = document.getElementById("seeDashBtn");
+  if (seeDashBtn) seeDashBtn.textContent = shown ? "Hide dashboard" : "View full dashboard";
 }
 
 async function showDashboard() {
