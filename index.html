@@ -56,7 +56,7 @@
   }
   .brand { display: flex; align-items: center; gap: 12px; }
   .logo {
-    width: 44px; height: 44px; border-radius: 12px;
+    width: 116px; height: 56px; border-radius: 12px;
     background: #fff; padding: 5px;
     box-shadow: 0 4px 18px var(--glow-blue);
     display: flex; align-items: center; justify-content: center;
@@ -91,7 +91,7 @@
   button.primary:hover { filter: brightness(1.1); box-shadow: 0 8px 28px var(--glow-purple); }
   button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
   .tabs { display: none; }
-  main { padding: 14px 24px 24px; max-width: 1280px; margin: 0 auto; }
+  main { padding: 14px 24px 48px; max-width: 1280px; margin: 0 auto; }
 
   /* ================= HERO ================= */
   .hero {
@@ -103,13 +103,6 @@
   }
   .hero::before { display: none; }
   .hero-bg { display: none; }
-  .hero-banner {
-    display: block;
-    width: 100%;
-    height: 180px;
-    object-fit: contain;
-    padding: 10px 0;
-  }
   .hero-inner { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; }
   .hero-title {
     margin: 0 0 8px; font-family: var(--font-head); font-weight: 800;
@@ -320,14 +313,12 @@
 
 <header>
   <div class="brand">
-    <div class="logo"><img src="logo.png" alt="Athlete Insight Lab logo" /></div>
+    <div class="logo"><img src="banner.png" alt="Athlete Insight Lab logo" /></div>
     <h1>Athlete Insight Lab</h1>
   </div>
   <span class="live" id="liveBadge" style="display:none;"><span class="dot"></span>Fictional wearable data</span>
   <div class="spacer"></div>
 </header>
-
-<img class="hero-banner" src="banner.png" alt="Athlete Insight Lab banner" />
 
 <main>
   <!-- ============================== HERO ============================== -->
