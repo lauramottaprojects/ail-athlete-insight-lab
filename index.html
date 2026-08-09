@@ -10,8 +10,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #080d18;
-    --bg-soft: #0b1220;
+    --bg: #dfe4ed;
+    --bg-soft: #eef2f7;
     --panel: #121b30;
     --panel2: #0e1626;
     --panel3: #0a101f;
@@ -40,8 +40,8 @@
     margin: 0;
     background: var(--bg);
     background-image:
-      radial-gradient(1100px 500px at 85% -10%, rgba(56,189,248,.07), transparent 60%),
-      radial-gradient(900px 460px at 0% -8%, rgba(167,139,250,.07), transparent 60%);
+      radial-gradient(1100px 500px at 85% -10%, rgba(56,189,248,.12), transparent 60%),
+      radial-gradient(900px 460px at 0% -8%, rgba(167,139,250,.10), transparent 60%);
     color: var(--text);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
@@ -128,14 +128,6 @@
   @keyframes float1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(28px,22px) scale(1.08); } }
   @keyframes float2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-26px,20px) scale(1.06); } }
   .hero-inner { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; }
-  .hero-badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase;
-    color: var(--muted);
-    border: 1px solid var(--line); border-radius: 999px;
-    padding: 6px 14px; margin-bottom: 22px; background: rgba(14,22,38,.6);
-  }
-  .hero-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
   .hero-title {
     margin: 0 0 14px; font-family: var(--font-head); font-weight: 800;
     font-size: clamp(28px, 4.6vw, 46px); line-height: 1.12; letter-spacing: -.5px;
@@ -253,7 +245,13 @@
   .dataev b { color: var(--text); }
 
   /* ================= CHAT ================= */
-  #chatArea { padding: 4px 2px; }
+  #chatArea {
+    background: var(--panel3);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
   .msgs { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 6px 2px 12px; max-height: 55vh; min-height: 160px; }
   .msg {
     max-width: 80%; padding: 12px 16px; border-radius: 16px;
@@ -268,8 +266,8 @@
   }
   .msg.bot {
     align-self: flex-start;
-    background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
-    border: 1px solid var(--line-soft);
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-bottom-left-radius: 6px;
   }
   .msg.bot p { margin: 9px 0; line-height: 1.65; }
@@ -327,7 +325,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .error { color: var(--red); }
   .footnote {
-    color: var(--muted2); font-size: 11.5px; margin-top: 16px; text-align: center; line-height: 1.7;
+    color: #4a5a73; font-size: 11.5px; margin-top: 16px; text-align: center; line-height: 1.7;
   }
   a { color: var(--accent); }
   @media (prefers-reduced-motion: reduce) {
@@ -345,11 +343,7 @@
   <span class="live"><span class="dot"></span>LIVE GOOGLE SHEETS DATA</span>
   <div class="spacer"></div>
   <div class="meta">
-    <span>Source: <b id="metaSource">-</b></span>
-    <span>Fetched: <b id="metaFetched">-</b></span>
-    <span>Rows: <b id="metaRows">-</b></span>
     <button id="dashBtn">Dashboard</button>
-    <button id="refreshBtn">Refresh data</button>
   </div>
 </header>
 
@@ -358,7 +352,6 @@
   <section class="hero">
     <div class="hero-bg" aria-hidden="true"></div>
     <div class="hero-inner">
-      <div class="hero-badge"><span class="dot"></span>Agentic organisation &middot; five collaborating agents</div>
       <h2 class="hero-title">Clarity, autonomy, and <span class="grad">understanding.</span></h2>
       <p class="hero-mission">AIL exists to empower runners with <strong>clarity, autonomy, and understanding</strong>. It transforms raw training data into meaningful insights that help athletes make informed decisions about their running journey.</p>
       <p class="hero-note">This is a prototype. It uses a fictional wearable data source that functions as a live database for simulated sensor ingestion.</p>
@@ -453,7 +446,7 @@
   </div>
 </main>
 
-<div class="footnote">Athlete Insight Lab (AIL) - educational prototype. Data is the AIL demonstration dataset (Google Sheets), queried live at run time. Chat answers are produced by the pipeline Lumen &rarr; Prism &rarr; Canvas &rarr; Echo &rarr; Nexus.</div>
+<div class="footnote">Athlete Insight Lab (AIL) &middot; Educational prototype developed by Laura Motta</div>
 
 <script>
 /* ==================================================================
@@ -763,9 +756,6 @@ function renderDashboard(d) {
   document.getElementById("dashLoading").style.display = "none";
   document.getElementById("dashContent").style.display = "block";
 
-  document.getElementById("metaSource").textContent = "Google Sheets - AIL dataset (live)";
-  document.getElementById("metaFetched").textContent = d.fetchedAt.toLocaleString();
-  document.getElementById("metaRows").textContent = `${d.rows.activities} activities / ${d.rows.sleep} sleep weeks`;
   const fc = document.getElementById("filterCount");
   if (fc) {
     fc.textContent = (d.rows.totalActivities && d.rows.activities !== d.rows.totalActivities)
@@ -1066,7 +1056,6 @@ document.getElementById("askBtn").addEventListener("click", () => {
   welcome.style.display = "none";
   document.getElementById("chatInput").focus();
 });
-document.getElementById("refreshBtn").addEventListener("click", refreshDashboard);
 document.getElementById("sendBtn").addEventListener("click", () => sendQuestion(document.getElementById("chatInput").value));
 document.getElementById("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendQuestion(document.getElementById("chatInput").value); });
 document.getElementById("newChatBtn").addEventListener("click", newChat);
