@@ -388,8 +388,7 @@ export async function runPipeline(question) {
 
   // Nexus produces the FINAL ANSWER. Extract it for the chat response.
   const nexusOutput = trace[trace.length - 1].output;
-  const match = nexusOutput.match(/FINAL ANSWER:\s*([\s\S]*)$/i);
-  const answer = (match ? match[1].trim() : nexusOutput).trim();
+  const answer = extractFinalAnswer(nexusOutput);
 
   return {
     answer,
@@ -401,6 +400,19 @@ export async function runPipeline(question) {
     },
     trace,
   };
+}
+
+// Robustly extract the customer-facing message after "FINAL ANSWER" (handles
+// bold markers, unusual whitespace, missing colon, and answers on later lines).
+function extractFinalAnswer(nexusOutput) {
+  const lines = nexusOutput.split(/\r?\n/);
+  const idx = lines.findIndex((l) => /^\s*FINAL\s*ANSWER\s*:?\s*\*{0,2}/i.test(l));
+  if (idx !== -1) {
+    const rest = lines.slice(idx + 1).join("\n").trim();
+    if (rest) return rest;
+  }
+  const m = nexusOutput.match(/FINAL\s*ANSWER\s*:?\s*([\s\S]*)$/i);
+  return (m ? m[1] : nexusOutput).trim();
 }
 
 // ---------------------------------------------------------------------------
