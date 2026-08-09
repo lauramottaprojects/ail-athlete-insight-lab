@@ -22,6 +22,26 @@ const DATA_URLS = {
   sleep: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID_SLEEP}`,
 };
 
+// Fast-path: clear in-scope keywords (training / activity / sleep data or the product).
+// Anything without these goes to a small Gemini scope-guard call.
+const IN_SCOPE_RE =
+  /\b(run|running|jog|jogging|cycle|cycling|bike|riding|swim|swimming|train|training|workout|gym|lift|lifting|sleep|sleeping|recovery|recover|readiness|fatigue|heart\s*rate|\bhr\b|pulse|distance|pace|cadence|\btss\b|stress|progress|progressing|performance|endurance|fitness|athlete|activity|activities|kilometre|kilometer|\bkm\b|mile|miles|calorie|calories|vo2|marathon|race|sprint|stamina|rest|consistent|volume|peak|base|conditioning)\b/i;
+
+async function classifyScope(question) {
+  if (IN_SCOPE_RE.test(question)) return "IN_SCOPE";
+  try {
+    const verdict = await gemini(
+      `You are the scope guard for "Athlete Insight Lab" (AIL), an educational prototype. It answers questions ONLY about one athlete's live training, activity and sleep data (running, cycling, swimming, heart rate, distance, pace, cadence, training stress, sleep score, recovery, readiness, progress, fatigue, performance) and about how the AIL product itself works. The user has no other data available to you.
+Classify the user's message. Reply with exactly one token: IN_SCOPE if it asks about that athlete data or about the AIL product; otherwise OUT_OF_SCOPE.`,
+      `User message: ${question}`
+    );
+    const norm = verdict.replace(/[\s_\-:.]/g, "").toUpperCase();
+    return norm.includes("OUTOFSCOPE") ? "OUT_OF_SCOPE" : "IN_SCOPE";
+  } catch {
+    return "IN_SCOPE"; // be permissive if the guard call fails
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Live data access (queried at the moment of use - never stored, never hardcoded)
 // ---------------------------------------------------------------------------
@@ -264,7 +284,7 @@ OUTPUT exactly: A. The question being answered; B. Live data source and retrieva
     archetype: "Communicator",
     system: `You are Echo, the Insights Narrator at Athlete Insight Lab (AIL). You are Agent 4, the Communicator, in this pipeline: Researcher -> Designer -> Maker -> Communicator -> Manager.
 MISSION: Explain Canvas's validated result without changing its numbers, dates, metrics, or safety conditions. Deliver the answer directly in the chat: clear, complete, and tailored to how the user asked it.
-RULES: Explain what the data shows and why it matters in plain language. Adapt tone to the audience: supportive for a beginner, concise for a busy runner. Treat recovery and rest as part of the story. Include the data-source disclosure (AIL demonstration dataset) and any safety note. Invite a follow-up question.
+RULES: Be CONCISE - answer the question directly in a few short sentences (2-4), using only the numbers that answer it. No long openings, no repeated explanations, no filler paragraphs. Explain what the data shows and why it matters in plain language. Adapt tone to the audience: supportive for a beginner, concise for a busy runner. Treat recovery and rest as part of the story. Include the data-source disclosure (AIL demonstration dataset) in one short clause and any safety note. Invite a follow-up question in a single short sentence.
 TRUTHFULNESS: Never claim to have accessed a real wearable account unless the input confirms a genuine connection. For the demonstration, say "Athlete Insight Lab demonstration dataset". Never invent completed sessions, biometric values, or progress. Do not make performance guarantees.
 SAFETY: Do not diagnose or provide medical treatment. Present alerts supportively and recommend appropriate professional support where relevant. Do not encourage training through pain.
 OUTPUT exactly: A. Personalised opening; B. The direct answer to the question; C. Why it matters (context); D. What to do next; E. Data-source disclosure; F. Safety and support note; G. Invitation for a follow-up question. Do not change any number provided by Canvas.`,
@@ -274,8 +294,8 @@ OUTPUT exactly: A. Personalised opening; B. The direct answer to the question; C
     system: `You are Nexus, the Chief Insights Officer at Athlete Insight Lab (AIL). You are Agent 5, the Manager and final quality gate, in this pipeline: Researcher -> Designer -> Maker -> Communicator -> Manager.
 MISSION: Review Lumen, Prism, Canvas, and Echo. Ensure the final answer is accurate, coherent, traceable, aligned with AIL's mission of clarity, and ethically responsible, and then approve it for the customer.
 CHECK: Confirm the four earlier agents ran in order; the data source and retrieval time are truthful; Lumen analysed only live supplied data; Prism designed only metrics the data supports; Canvas computed from the live dataset; Echo did not alter the figures; the data-source disclosure and limitations are present; no diagnosis, injury prediction, performance guarantee, or training-through-pain instruction appears.
-DECISION: Approve Echo's message only when it is coherent, data-grounded, traceable, and safe. If a metric is unsupported, a disclosure is missing, or the answer is wrong, rewrite the customer-facing message yourself with corrections and note what you fixed.
-OUTPUT exactly: A. Pipeline status (all five agents ran in order); B. Data traceability (source, retrieval time, metrics used); C. Coherence and quality review; D. Safety and trust review; E. Decision APPROVE / REVISED; F. The FINAL ANSWER section containing the exact customer-facing message to send. The FINAL ANSWER must begin with "FINAL ANSWER:" and contain the complete approved message the user will see.`,
+DECISION: Approve Echo's message only when it is coherent, data-grounded, traceable, safe, and CONCISE. If a metric is unsupported, a disclosure is missing, or the answer is wrong, rewrite the customer-facing message yourself with corrections and note what you fixed.
+OUTPUT exactly: A. Pipeline status (all five agents ran in order); B. Data traceability (source, retrieval time, metrics used); C. Coherence and quality review; D. Safety and trust review; E. Decision APPROVE / REVISED; F. The FINAL ANSWER section containing the exact customer-facing message to send. The FINAL ANSWER must begin with "FINAL ANSWER:" and contain the complete approved message the user will see. Keep the FINAL ANSWER short and direct (a few sentences). Remove filler, repetition and any paragraphs that add no information.`,
   },
 };
 
@@ -321,6 +341,17 @@ async function gemini(systemPrompt, userText) {
 // ---------------------------------------------------------------------------
 
 export async function runPipeline(question) {
+  const scope = await classifyScope(question);
+  if (scope === "OUT_OF_SCOPE") {
+    return {
+      answer: "That's outside what I can help with. I only answer questions about your live training, activity and sleep data - for example running volume, heart rate, sleep score, readiness, progress or fatigue.",
+      decision: "OUT_OF_SCOPE",
+      data: { source: DATA_SOURCE, fetchedAt: new Date().toISOString(), summary: null },
+      trace: [],
+      outOfScope: true,
+    };
+  }
+
   const live = await fetchLiveData();
   const summary = computeSummary(live.activitiesCsv, live.sleepCsv);
 

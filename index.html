@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Athlete Insight Lab - Agentic Organisation Prototype</title>
+<title>Athlete Insight Lab</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -66,13 +66,19 @@
   button.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; color: #06101f; font-weight: 700; }
   button.primary:hover { filter: brightness(1.08); }
   button:disabled { opacity: .5; cursor: not-allowed; }
-  .tabs { display: flex; gap: 8px; padding: 0 24px; margin-top: 16px; }
-  .tabs button { font-size: 14px; padding: 10px 22px; }
-  .tabs button.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #06101f; font-weight: 700; border: none; }
+  .tabs { display: none; }
   main { padding: 20px 24px 60px; max-width: 1280px; margin: 0 auto; }
   .view { display: none; }
   .view.active { display: block; animation: fade .25s; }
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  .welcome {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px 22px; margin-bottom: 16px; text-align: center;
+  }
+  .welcome h2 { margin: 0 0 6px; font-size: 21px; letter-spacing: .3px; }
+  .welcome .wsub { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; }
+  .welcome .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .welcome .actions button { padding: 12px 24px; font-size: 14px; }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 18px; }
   .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
   .kpi .label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
@@ -95,15 +101,15 @@
   .dataev { font-size: 12.5px; color: var(--muted); line-height: 1.8; }
   .dataev b { color: var(--text); }
   /* Chat */
-  #chatArea { display: flex; flex-direction: column; height: calc(100vh - 230px); min-height: 420px; }
-  .msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 6px 2px 14px; }
-  .msg { max-width: 78%; padding: 12px 16px; border-radius: 14px; line-height: 1.55; font-size: 14px; white-space: pre-wrap; }
+  .msgs { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 6px 2px 12px; max-height: 55vh; min-height: 160px; }
+  .msg { max-width: 78%; padding: 11px 15px; border-radius: 14px; line-height: 1.5; font-size: 14px; white-space: pre-wrap; }
   .msg.user { align-self: flex-end; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #06101f; font-weight: 500; }
   .msg.bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); }
-  .msg.bot h3 { margin: 10px 0 6px; font-size: 14px; }
+  .msg.bot p { margin: 4px 0; }
+  .msg.bot h3 { margin: 8px 0 4px; font-size: 14px; }
   .msg.bot h3:first-child { margin-top: 0; }
-  .msg.bot ul { margin: 6px 0; padding-left: 20px; }
-  .msg.bot li { margin: 3px 0; }
+  .msg.bot ul { margin: 4px 0; padding-left: 20px; }
+  .msg.bot li { margin: 2px 0; }
   .msg.bot strong { color: var(--accent); }
   .msg.bot .disc { color: var(--muted); font-size: 12px; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -134,10 +140,7 @@
 <header>
   <div class="brand">
     <div class="logo">AIL</div>
-    <div>
-      <h1>Athlete Insight Lab</h1>
-      <div class="sub">Agentic organisation - five collaborating AI agents</div>
-    </div>
+    <h1>Athlete Insight Lab</h1>
   </div>
   <span class="live"><span class="dot"></span>LIVE GOOGLE SHEETS DATA</span>
   <div class="spacer"></div>
@@ -145,18 +148,14 @@
     <span>Source: <b id="metaSource">-</b></span>
     <span>Fetched: <b id="metaFetched">-</b></span>
     <span>Rows: <b id="metaRows">-</b></span>
+    <button id="dashBtn">Dashboard</button>
     <button id="refreshBtn">Refresh data</button>
   </div>
 </header>
 
-<div class="tabs">
-  <button id="tabDashboard" class="active">Dashboard</button>
-  <button id="tabChat">Ask the agents (chat)</button>
-</div>
-
 <main>
-  <!-- ============================== DASHBOARD ============================== -->
-  <section id="viewDashboard" class="view active">
+  <!-- ============================== DASHBOARD (hidden until requested) ============================== -->
+  <section id="viewDashboard" class="view">
     <div id="dashLoading" style="color: var(--muted); padding: 40px 0; text-align:center;">
       <span class="spinner"></span> Loading live data from Google Sheets...
     </div>
@@ -186,29 +185,35 @@
   </section>
 
   <!-- ============================== CHAT ============================== -->
-  <section id="viewChat" class="view">
-    <div id="chatArea">
-      <div class="chips" id="chips">
-        <button data-q="What was my average sleep score in the last month?">Sleep score last month</button>
-        <button data-q="How much have I run this month compared with last month?">Running volume</button>
-        <button data-q="Am I progressing or showing signs of fatigue?">Progress or fatigue</button>
-        <button data-q="What is my readiness to push to the next level?">Readiness</button>
+  <section id="chatArea">
+    <div class="welcome" id="welcome">
+      <h2>Welcome to Athlete Insight Lab</h2>
+      <p class="wsub">Ask about your live training and recovery data, or open the full dashboard.</p>
+      <div class="actions">
+        <button class="primary" id="seeDashBtn">View full dashboard</button>
+        <button id="askBtn">Ask a question</button>
       </div>
-      <div class="msgs" id="msgs"></div>
-      <div class="pipeline-indicator" id="pipelineIndicator">
-        Five-agent pipeline running...
-        <div class="steps" id="pipelineSteps">
-          <span class="step" data-a="Lumen">1 Lumen</span>
-          <span class="step" data-a="Prism">2 Prism</span>
-          <span class="step" data-a="Canvas">3 Canvas</span>
-          <span class="step" data-a="Echo">4 Echo</span>
-          <span class="step" data-a="Nexus">5 Nexus</span>
-        </div>
+    </div>
+    <div class="chips" id="chips">
+      <button data-q="What was my average sleep score in the last month?">Sleep score last month</button>
+      <button data-q="How much have I run this month compared with last month?">Running volume</button>
+      <button data-q="Am I progressing or showing signs of fatigue?">Progress or fatigue</button>
+      <button data-q="What is my readiness to push to the next level?">Readiness</button>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="pipeline-indicator" id="pipelineIndicator">
+      Five-agent pipeline running...
+      <div class="steps" id="pipelineSteps">
+        <span class="step" data-a="Lumen">1 Lumen</span>
+        <span class="step" data-a="Prism">2 Prism</span>
+        <span class="step" data-a="Canvas">3 Canvas</span>
+        <span class="step" data-a="Echo">4 Echo</span>
+        <span class="step" data-a="Nexus">5 Nexus</span>
       </div>
-      <div class="inputrow">
-        <input id="chatInput" placeholder="Ask about your live training and recovery data..." autocomplete="off" />
-        <button class="primary" id="sendBtn">Send</button>
-      </div>
+    </div>
+    <div class="inputrow">
+      <input id="chatInput" placeholder="Ask about your live training and recovery data..." autocomplete="off" />
+      <button class="primary" id="sendBtn">Send</button>
     </div>
   </section>
 </main>
@@ -568,9 +573,8 @@ function renderBotMarkdown(text) {
       out.push(`<li>${t.replace(/^[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</li>`);
     } else {
       if (inList) { out.push("</ul>"); inList = false; }
-      if (t === "---" || t === "***" || t === "___") { out.push("<hr style='border-color:var(--line);margin:10px 0;'>"); }
-      else if (t === "") out.push("");
-      else out.push(`<p>${t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`([^`]+)`/g, "<code style='background:var(--panel2);padding:1px 5px;border-radius:4px;'>$1</code>")}</p>`);
+      if (t === "---" || t === "***" || t === "___") { out.push("<hr style='border-color:var(--line);margin:8px 0;'>"); }
+      else if (t !== "") out.push(`<p>${t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`([^`]+)`/g, "<code style='background:var(--panel2);padding:1px 5px;border-radius:4px;'>$1</code>")}</p>`);
     }
   }
   if (inList) out.push("</ul>");
@@ -589,6 +593,7 @@ function addMsg(role, html) {
 async function sendQuestion(question) {
   question = question.trim();
   if (!question) return;
+  document.getElementById("welcome").style.display = "none";
   addMsg("user", escapeHtml(question));
   document.getElementById("chatInput").value = "";
 
@@ -610,6 +615,12 @@ async function sendQuestion(question) {
       throw new Error(e.error || `Server error ${res.status}`);
     }
     const data = await res.json();
+
+    if (data.outOfScope) {
+      addMsg("bot", renderBotMarkdown(data.answer));
+      return;
+    }
+
     stepsEl.querySelectorAll(".step").forEach(s => s.classList.add("done"));
 
     let html = `<div>${renderBotMarkdown(data.answer)}</div>`;
@@ -634,22 +645,48 @@ async function sendQuestion(question) {
 /* ==================================================================
    BOOT
    ================================================================== */
-document.getElementById("tabDashboard").addEventListener("click", () => switchView("dashboard"));
-document.getElementById("tabChat").addEventListener("click", () => switchView("chat"));
-function switchView(v) {
-  document.getElementById("tabDashboard").classList.toggle("active", v === "dashboard");
-  document.getElementById("tabChat").classList.toggle("active", v === "chat");
-  document.getElementById("viewDashboard").classList.toggle("active", v === "dashboard");
-  document.getElementById("viewChat").classList.toggle("active", v === "chat");
+const welcome = document.getElementById("welcome");
+const viewDashboard = document.getElementById("viewDashboard");
+const dashBtn = document.getElementById("dashBtn");
+let dashLoaded = false;
+
+function setDashBtnLabel(shown) {
+  dashBtn.textContent = shown ? "Hide dashboard" : "Dashboard";
 }
+
+async function showDashboard() {
+  viewDashboard.classList.add("active");
+  if (!dashLoaded) {
+    dashLoaded = true;
+    await refreshDashboard();
+  }
+  for (const c of Object.values(charts)) c && c.resize();
+  setDashBtnLabel(true);
+  viewDashboard.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function hideDashboard() {
+  viewDashboard.classList.remove("active");
+  setDashBtnLabel(false);
+}
+
+async function toggleDashboard() {
+  if (viewDashboard.classList.contains("active")) hideDashboard();
+  else await showDashboard();
+}
+
+dashBtn.addEventListener("click", toggleDashboard);
+document.getElementById("seeDashBtn").addEventListener("click", toggleDashboard);
+document.getElementById("askBtn").addEventListener("click", () => {
+  welcome.style.display = "none";
+  document.getElementById("chatInput").focus();
+});
 document.getElementById("refreshBtn").addEventListener("click", refreshDashboard);
 document.getElementById("sendBtn").addEventListener("click", () => sendQuestion(document.getElementById("chatInput").value));
 document.getElementById("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendQuestion(document.getElementById("chatInput").value); });
 document.querySelectorAll("#chips button").forEach(b => b.addEventListener("click", () => sendQuestion(b.dataset.q)));
 
-addMsg("bot", `Hello! I am the <b>Athlete Insight Lab</b> team. Ask me anything about your training and recovery data - the five agents (Lumen, Prism, Canvas, Echo, Nexus) will analyse the live Google Sheets data and answer.`);
-
-refreshDashboard();
+setDashBtnLabel(false);
 </script>
 </body>
 </html>
