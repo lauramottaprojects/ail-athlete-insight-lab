@@ -145,25 +145,14 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .hero-mission {
-    margin: 0 auto 26px; max-width: 640px;
+    margin: 0 auto 18px; max-width: 640px;
     color: var(--muted); font-size: 15px; line-height: 1.75;
   }
   .hero-mission strong { color: var(--text); font-weight: 600; }
-  .hero-features { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .feature {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 12.5px; color: var(--text);
-    border: 1px solid var(--line); border-radius: 999px;
-    padding: 8px 14px; background: rgba(14,22,38,.65);
+  .hero-note {
+    margin: 6px auto 0; max-width: 640px;
+    color: var(--muted2); font-size: 12px; line-height: 1.6; letter-spacing: .2px;
   }
-  .feature .fico {
-    width: 18px; height: 18px; border-radius: 6px; flex: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 800; color: #06101f;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-  }
-  .feature .fico.g { background: linear-gradient(135deg, var(--green), #2dd4bf); }
-  .feature .fico.p { background: linear-gradient(135deg, var(--accent2), var(--accent)); }
 
   #layout { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
   #layout.split { grid-template-columns: minmax(0, 1fr) 410px; }
@@ -372,11 +361,7 @@
       <div class="hero-badge"><span class="dot"></span>Agentic organisation &middot; five collaborating agents</div>
       <h2 class="hero-title">Clarity, autonomy, and <span class="grad">understanding.</span></h2>
       <p class="hero-mission">AIL exists to empower runners with <strong>clarity, autonomy, and understanding</strong>. It transforms raw training data into meaningful insights that help athletes make informed decisions about their running journey.</p>
-      <div class="hero-features">
-        <span class="feature"><span class="fico g">LIVE</span>Google Sheets, queried live</span>
-        <span class="feature"><span class="fico">5×</span>Lumen &rarr; Prism &rarr; Canvas &rarr; Echo &rarr; Nexus</span>
-        <span class="feature"><span class="fico p">AI</span>Gemini-powered insights</span>
-      </div>
+      <p class="hero-note">This is a prototype. It uses a fictional wearable data source that functions as a live database for simulated sensor ingestion.</p>
     </div>
   </section>
 
