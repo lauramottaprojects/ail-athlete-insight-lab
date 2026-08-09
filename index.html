@@ -574,7 +574,7 @@ function renderBotMarkdown(text) {
     } else {
       if (inList) { out.push("</ul>"); inList = false; }
       if (t === "---" || t === "***" || t === "___") { out.push("<hr style='border-color:var(--line);margin:8px 0;'>"); }
-      else if (t !== "") out.push(`<p>${t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`([^`]+)`/g, "<code style='background:var(--panel2);padding:1px 5px;border-radius:4px;'>$1</code>")}</p>`);
+      else if (t !== "" && !/^\*+$/.test(t)) out.push(`<p>${t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`([^`]+)`/g, "<code style='background:var(--panel2);padding:1px 5px;border-radius:4px;'>$1</code>")}</p>`);
     }
   }
   if (inList) out.push("</ul>");
