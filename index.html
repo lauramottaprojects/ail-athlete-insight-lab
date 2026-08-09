@@ -103,6 +103,11 @@
   }
   .hero::before { display: none; }
   .hero-bg { display: none; }
+  .hero-banner {
+    display: block; width: 100%; height: auto;
+    border-radius: 16px; border: 1px solid var(--line-soft);
+    margin: 0 0 28px;
+  }
   .hero-inner { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; }
   .hero-title {
     margin: 0 0 14px; font-family: var(--font-head); font-weight: 800;
@@ -323,7 +328,7 @@
 <main>
   <!-- ============================== HERO ============================== -->
   <section class="hero">
-    <div class="hero-bg" aria-hidden="true"></div>
+    <img class="hero-banner" src="banner.png" alt="Athlete Insight Lab banner" />
     <div class="hero-inner">
       <h2 class="hero-title">Clarity, autonomy, and <span class="grad">understanding.</span></h2>
       <p class="hero-mission">AIL exists to empower runners with <strong>clarity, autonomy, and understanding</strong>. It transforms raw training data into meaningful insights that help athletes make informed decisions about their running journey.</p>
