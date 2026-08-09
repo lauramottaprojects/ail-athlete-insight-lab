@@ -89,8 +89,9 @@
   .kpi .value { font-size: 28px; font-weight: 800; margin-top: 6px; }
   .kpi .note { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
   .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-  @media (max-width: 900px) { .grid, .grid3 { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .grid, .grid2, .grid3 { grid-template-columns: 1fr; } }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
   .card h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .4px; color: var(--muted); font-weight: 600; }
   .chart-wrap { position: relative; height: 260px; }
@@ -166,13 +167,9 @@
     </div>
     <div id="dashContent" style="display:none;">
       <div class="kpis" id="kpis"></div>
-      <div class="grid">
-        <div class="card"><h3>Weekly running distance (live) + forecast</h3><div class="chart-wrap"><canvas id="chartDistance"></canvas></div></div>
+      <div class="grid2">
+        <div class="card" style="grid-column: 1 / -1;"><h3>Weekly running distance (live) + forecast</h3><div class="chart-wrap"><canvas id="chartDistance"></canvas></div></div>
         <div class="card"><h3>Weekly sleep score (live)</h3><div class="chart-wrap"><canvas id="chartSleep"></canvas></div></div>
-      </div>
-      <div class="grid3">
-        <div class="card"><h3>Activities by type</h3><div class="chart-wrap"><canvas id="chartType"></canvas></div></div>
-        <div class="card"><h3>Average heart rate by activity</h3><div class="chart-wrap"><canvas id="chartHr"></canvas></div></div>
         <div class="card"><h3>Readiness forecast</h3>
           <div class="gauge-wrap">
             <div class="gauge-num" id="readinessNum">-</div>
@@ -181,6 +178,10 @@
             <div class="gauge-desc" id="readinessDesc">-</div>
           </div>
         </div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>Activities by type</h3><div class="chart-wrap"><canvas id="chartType"></canvas></div></div>
+        <div class="card"><h3>Average heart rate by activity</h3><div class="chart-wrap"><canvas id="chartHr"></canvas></div></div>
       </div>
     </div>
   </section>
@@ -476,8 +477,7 @@ function renderDashboard(d) {
     { label: "Total distance", value: k.totalDist.toLocaleString(), unit: " km", note: "across all activities" },
     { label: "Activities", value: k.activities, note: `${k.runs} runs` },
     { label: "Total duration", value: Math.floor(k.totalMin / 60), unit: " h", note: `${k.totalMin % 60} min` },
-    { label: "Avg heart rate", value: k.avgHr ?? "-", note: "bpm across sessions" },
-    { label: "Training Stress", value: k.tss.toLocaleString(), note: "total TSS" }
+    { label: "Avg heart rate", value: k.avgHr ?? "-", note: "bpm across sessions" }
   ];
   document.getElementById("kpis").innerHTML = kpis.map(p =>
     `<div class="kpi"><div class="label">${p.label}</div><div class="value">${p.value}<span style="font-size:15px;color:var(--muted)">${p.unit || ""}</span></div><div class="note">${p.note}</div></div>`

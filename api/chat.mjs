@@ -28,17 +28,30 @@ const IN_SCOPE_RE =
   /\b(run|running|jog|jogging|cycle|cycling|bike|riding|swim|swimming|train|training|workout|gym|lift|lifting|sleep|sleeping|recovery|recover|readiness|fatigue|heart\s*rate|\bhr\b|pulse|distance|pace|cadence|\btss\b|stress|progress|progressing|performance|endurance|fitness|athlete|activity|activities|kilometre|kilometer|\bkm\b|mile|miles|calorie|calories|vo2|marathon|race|sprint|stamina|rest|consistent|volume|peak|base|conditioning)\b/i;
 
 async function classifyScope(question) {
-  if (IN_SCOPE_RE.test(question)) return "IN_SCOPE";
+  if (IN_SCOPE_RE.test(question)) return { inScope: true, reply: "" };
   try {
     const verdict = await gemini(
-      `You are the scope guard for "Athlete Insight Lab" (AIL), an educational prototype. It answers questions ONLY about one athlete's live training, activity and sleep data (running, cycling, swimming, heart rate, distance, pace, cadence, training stress, sleep score, recovery, readiness, progress, fatigue, performance) and about how the AIL product itself works. The user has no other data available to you.
-Classify the user's message. Reply with exactly one token: IN_SCOPE if it asks about that athlete data or about the AIL product; otherwise OUT_OF_SCOPE.`,
+      `You are the front desk of "Athlete Insight Lab" (AIL), an educational product that only answers questions about one athlete's live training, activity and sleep data (running, cycling, swimming, heart rate, distance, pace, cadence, training stress, sleep score, recovery, readiness, progress, fatigue, performance) and about how the AIL product works. It does not answer anything else (weather, news, jokes, general knowledge, recipes, etc.).
+
+Decide whether the user's message is IN SCOPE or OUT OF SCOPE, then respond in EXACTLY this two-line format:
+
+SCOPE: IN_SCOPE
+REPLY:
+
+or, when the message is out of scope:
+
+SCOPE: OUT_OF_SCOPE
+REPLY: <a short, warm, natural reply of 1-2 sentences, written like a friendly coach, telling the user you only help with their training, activity and sleep data and inviting them to ask about that. Sound human and unscripted - never robotic, never a scripted sentence.>`,
       `User message: ${question}`
     );
-    const norm = verdict.replace(/[\s_\-:.]/g, "").toUpperCase();
-    return norm.includes("OUTOFSCOPE") ? "OUT_OF_SCOPE" : "IN_SCOPE";
+    const scopeMatch = verdict.match(/SCOPE:\s*(IN_SCOPE|OUT_OF_SCOPE)/i);
+    const isOut = scopeMatch ? /OUT_OF_SCOPE/i.test(scopeMatch[1]) : /OUT_OF_SCOPE/i.test(verdict);
+    if (!isOut) return { inScope: true, reply: "" };
+    const replyMatch = verdict.match(/REPLY:\s*([\s\S]*)$/i);
+    const reply = replyMatch ? replyMatch[1].trim() : "";
+    return { inScope: false, reply };
   } catch {
-    return "IN_SCOPE"; // be permissive if the guard call fails
+    return { inScope: true, reply: "" }; // be permissive if the guard call fails
   }
 }
 
@@ -341,10 +354,12 @@ async function gemini(systemPrompt, userText) {
 // ---------------------------------------------------------------------------
 
 export async function runPipeline(question) {
-  const scope = await classifyScope(question);
-  if (scope === "OUT_OF_SCOPE") {
+  const gate = await classifyScope(question);
+  if (!gate.inScope) {
     return {
-      answer: "That's outside what I can help with. I only answer questions about your live training, activity and sleep data - for example running volume, heart rate, sleep score, readiness, progress or fatigue.",
+      answer:
+        gate.reply ||
+        "That's outside what I can help with - but ask me anything about your training, activity or sleep data!",
       decision: "OUT_OF_SCOPE",
       data: { source: DATA_SOURCE, fetchedAt: new Date().toISOString(), summary: null },
       trace: [],
