@@ -70,10 +70,9 @@ async function chat() {
       const data = await res.json();
       clearInterval(t);
       console.log("\n");
-      console.log("--- AIL (Echo, approved by Nexus) ---");
+      console.log("--- AIL ---");
       console.log(data.answer);
       console.log("\n" + "-".repeat(64));
-      console.log(`Decision: ${data.decision} | Data fetched live at ${new Date(data.data.fetchedAt).toLocaleTimeString()} | Source: ${data.data.source}`);
       if (showTrace) {
         console.log("-".repeat(64));
         for (const agent of data.trace) {

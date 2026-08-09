@@ -68,6 +68,10 @@
   button:disabled { opacity: .5; cursor: not-allowed; }
   .tabs { display: none; }
   main { padding: 20px 24px 60px; max-width: 1280px; margin: 0 auto; }
+  #layout { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
+  #layout.split { grid-template-columns: minmax(0, 1fr) 410px; }
+  @media (max-width: 980px) { #layout.split { grid-template-columns: 1fr; } }
+  #layout.split #chatArea { position: sticky; top: 74px; max-height: calc(100vh - 96px); overflow-y: auto; padding-right: 2px; }
   .view { display: none; }
   .view.active { display: block; animation: fade .25s; }
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
@@ -154,6 +158,7 @@
 </header>
 
 <main>
+  <div id="layout">
   <!-- ============================== DASHBOARD (hidden until requested) ============================== -->
   <section id="viewDashboard" class="view">
     <div id="dashLoading" style="color: var(--muted); padding: 40px 0; text-align:center;">
@@ -176,10 +181,6 @@
             <div class="gauge-desc" id="readinessDesc">-</div>
           </div>
         </div>
-      </div>
-      <div class="card">
-        <h3>Live data evidence</h3>
-        <div class="dataev" id="dataEvidence">-</div>
       </div>
     </div>
   </section>
@@ -216,6 +217,7 @@
       <button class="primary" id="sendBtn">Send</button>
     </div>
   </section>
+  </div>
 </main>
 
 <div class="footnote">Athlete Insight Lab (AIL) - educational prototype. Data is the AIL demonstration dataset (Google Sheets), queried live at run time. Chat answers are produced by the pipeline Lumen &rarr; Prism &rarr; Canvas &rarr; Echo &rarr; Nexus.</div>
@@ -528,13 +530,6 @@ function renderDashboard(d) {
   document.getElementById("readinessBar").style.width = rd.value + "%";
   document.getElementById("readinessBar").style.background = rd.color;
   document.getElementById("readinessDesc").textContent = rd.desc;
-
-  document.getElementById("dataEvidence").innerHTML = `
-    <div>Data source: <b>Google Sheets - Athlete Insight Lab dataset</b> (fictional wearable device)</div>
-    <div>Retrieved live at: <b>${d.fetchedAt.toLocaleString()}</b> (this page queries Google at load / refresh time)</div>
-    <div>Activities sheet: <b>${d.rows.activities} rows</b> | Sleep sheet: <b>${d.rows.sleep} rows</b></div>
-    <div>Live query endpoint: <code>https://docs.google.com/spreadsheets/d/${CONFIG.sheets.id}/export?format=csv&gid=...</code></div>
-    <div>Chat answers are computed by the five-agent pipeline on the backend, which re-queries the same live sheets at every question.</div>`;
 }
 
 async function refreshDashboard() {
@@ -546,9 +541,7 @@ async function refreshDashboard() {
     liveState = await loadLiveData();
     renderDashboard(liveState);
   } catch (e) {
-    document.getElementById("dashLoading").style.display = "none";
-    document.getElementById("dashContent").style.display = "block";
-    document.getElementById("dataEvidence").innerHTML = `<span class="error">Could not load live data: ${e.message}. Check your connection and that the sheet is public.</span>`;
+    document.getElementById("dashLoading").innerHTML = `<span class="error">Could not load live data: ${e.message}. Check your connection and that the sheet is public.</span>`;
   }
 }
 
@@ -623,17 +616,7 @@ async function sendQuestion(question) {
 
     stepsEl.querySelectorAll(".step").forEach(s => s.classList.add("done"));
 
-    let html = `<div>${renderBotMarkdown(data.answer)}</div>`;
-    html += `<div class="disc" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px;">
-      Pipeline: ${data.trace.map(t => `<b>${t.agent}</b> (${t.role})`).join(" &rarr; ")} &middot; Decision: ${data.decision} &middot; Data fetched live at ${new Date(data.data.fetchedAt).toLocaleTimeString()}
-    </div>`;
-    html += `<details class="trace"><summary>Show agent pipeline trace</summary>`;
-    for (const t of data.trace) {
-      html += `<div class="agentbox"><b>${t.agent}</b> - ${t.role} (${t.archetype})</div>
-               <div class="agentbox" style="margin-top:2px;">${escapeHtml(t.output.slice(0, 1400))}</div>`;
-    }
-    html += `</details>`;
-    addMsg("bot", html);
+    addMsg("bot", renderBotMarkdown(data.answer));
   } catch (err) {
     addMsg("bot", `<div class="error">Sorry, the pipeline failed: ${escapeHtml(err.message)}</div>`);
   } finally {
@@ -648,6 +631,7 @@ async function sendQuestion(question) {
 const welcome = document.getElementById("welcome");
 const viewDashboard = document.getElementById("viewDashboard");
 const dashBtn = document.getElementById("dashBtn");
+const layout = document.getElementById("layout");
 let dashLoaded = false;
 
 function setDashBtnLabel(shown) {
@@ -656,6 +640,7 @@ function setDashBtnLabel(shown) {
 
 async function showDashboard() {
   viewDashboard.classList.add("active");
+  layout.classList.add("split");
   if (!dashLoaded) {
     dashLoaded = true;
     await refreshDashboard();
@@ -667,6 +652,7 @@ async function showDashboard() {
 
 function hideDashboard() {
   viewDashboard.classList.remove("active");
+  layout.classList.remove("split");
   setDashBtnLabel(false);
 }
 
