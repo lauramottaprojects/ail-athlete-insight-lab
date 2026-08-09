@@ -1,0 +1,13 @@
+{
+  "name": "athlete-insight-lab",
+  "version": "1.0.0",
+  "description": "Athlete Insight Lab (AIL) - agentic organisation prototype: live dashboard + chat powered by five collaborating AI agents.",
+  "type": "module",
+  "scripts": {
+    "chat": "node chat.mjs",
+    "test:pipeline": "node test-pipeline.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athlete Insight Lab - Agentic Organisation Prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #111a2e;
+    --panel2: #0e1626;
+    --line: #1e2a44;
+    --text: #e7edf7;
+    --muted: #8ea3c0;
+    --accent: #38bdf8;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 24px;
+    background: rgba(11,18,32,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 17px; color: #06101f;
+  }
+  .brand h1 { margin: 0; font-size: 18px; letter-spacing: .3px; }
+  .brand .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .live {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: .4px;
+    color: var(--green);
+    border: 1px solid rgba(52,211,153,.4);
+    padding: 4px 10px; border-radius: 999px; background: rgba(52,211,153,.08);
+  }
+  .live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .spacer { flex: 1; }
+  .meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .meta b { color: var(--text); font-weight: 600; }
+  button {
+    font: inherit; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel);
+    color: var(--text); padding: 8px 14px; border-radius: 9px; font-size: 13px;
+    transition: all .15s;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; color: #06101f; font-weight: 700; }
+  button.primary:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .tabs { display: flex; gap: 8px; padding: 0 24px; margin-top: 16px; }
+  .tabs button { font-size: 14px; padding: 10px 22px; }
+  .tabs button.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #06101f; font-weight: 700; border: none; }
+  main { padding: 20px 24px 60px; max-width: 1280px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; animation: fade .25s; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .kpi .label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .kpi .value { font-size: 28px; font-weight: 800; margin-top: 6px; }
+  .kpi .note { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 900px) { .grid, .grid3 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .4px; color: var(--muted); font-weight: 600; }
+  .chart-wrap { position: relative; height: 260px; }
+  .gauge-wrap { text-align: center; }
+  .gauge-num { font-size: 42px; font-weight: 800; margin-top: 8px; }
+  .gauge-label { font-weight: 600; margin-top: 4px; }
+  .gauge-desc { color: var(--muted); font-size: 12.5px; margin-top: 10px; line-height: 1.5; }
+  .progress { height: 10px; border-radius: 999px; background: var(--panel2); overflow: hidden; margin-top: 14px; }
+  .progress > div { height: 100%; border-radius: 999px; transition: width .8s; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: var(--muted); }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; }
+  .dataev { font-size: 12.5px; color: var(--muted); line-height: 1.8; }
+  .dataev b { color: var(--text); }
+  /* Chat */
+  #chatArea { display: flex; flex-direction: column; height: calc(100vh - 230px); min-height: 420px; }
+  .msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 6px 2px 14px; }
+  .msg { max-width: 78%; padding: 12px 16px; border-radius: 14px; line-height: 1.55; font-size: 14px; white-space: pre-wrap; }
+  .msg.user { align-self: flex-end; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #06101f; font-weight: 500; }
+  .msg.bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); }
+  .msg.bot h3 { margin: 10px 0 6px; font-size: 14px; }
+  .msg.bot h3:first-child { margin-top: 0; }
+  .msg.bot ul { margin: 6px 0; padding-left: 20px; }
+  .msg.bot li { margin: 3px 0; }
+  .msg.bot strong { color: var(--accent); }
+  .msg.bot .disc { color: var(--muted); font-size: 12px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chips button { font-size: 12.5px; padding: 7px 12px; color: var(--accent); border-color: rgba(56,189,248,.3); }
+  .inputrow { display: flex; gap: 10px; }
+  .inputrow input {
+    flex: 1; font: inherit; font-size: 14px; color: var(--text);
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; outline: none;
+  }
+  .inputrow input:focus { border-color: var(--accent); }
+  .pipeline-indicator { display: none; font-size: 12.5px; color: var(--muted); margin: 10px 2px; }
+  .pipeline-indicator .steps { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .step { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
+  .step.done { border-color: var(--green); color: var(--green); }
+  .step.active { border-color: var(--accent); color: var(--accent); animation: pulse 1.2s infinite; }
+  details.trace { margin-top: 10px; }
+  details.trace summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+  details.trace .agentbox { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 12.5px; white-space: pre-wrap; line-height: 1.5; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { color: var(--red); }
+  .footnote { color: var(--muted); font-size: 11.5px; margin-top: 10px; text-align: center; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">AIL</div>
+    <div>
+      <h1>Athlete Insight Lab</h1>
+      <div class="sub">Agentic organisation - five collaborating AI agents</div>
+    </div>
+  </div>
+  <span class="live"><span class="dot"></span>LIVE GOOGLE SHEETS DATA</span>
+  <div class="spacer"></div>
+  <div class="meta">
+    <span>Source: <b id="metaSource">-</b></span>
+    <span>Fetched: <b id="metaFetched">-</b></span>
+    <span>Rows: <b id="metaRows">-</b></span>
+    <button id="refreshBtn">Refresh data</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <button id="tabDashboard" class="active">Dashboard</button>
+  <button id="tabChat">Ask the agents (chat)</button>
+</div>
+
+<main>
+  <!-- ============================== DASHBOARD ============================== -->
+  <section id="viewDashboard" class="view active">
+    <div id="dashLoading" style="color: var(--muted); padding: 40px 0; text-align:center;">
+      <span class="spinner"></span> Loading live data from Google Sheets...
+    </div>
+    <div id="dashContent" style="display:none;">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid">
+        <div class="card"><h3>Weekly running distance (live) + forecast</h3><div class="chart-wrap"><canvas id="chartDistance"></canvas></div></div>
+        <div class="card"><h3>Weekly sleep score (live)</h3><div class="chart-wrap"><canvas id="chartSleep"></canvas></div></div>
+      </div>
+      <div class="grid3">
+        <div class="card"><h3>Activities by type</h3><div class="chart-wrap"><canvas id="chartType"></canvas></div></div>
+        <div class="card"><h3>Average heart rate by activity</h3><div class="chart-wrap"><canvas id="chartHr"></canvas></div></div>
+        <div class="card"><h3>Readiness forecast</h3>
+          <div class="gauge-wrap">
+            <div class="gauge-num" id="readinessNum">-</div>
+            <div class="gauge-label" id="readinessLabel">-</div>
+            <div class="progress"><div id="readinessBar" style="width:0%; background: var(--accent);"></div></div>
+            <div class="gauge-desc" id="readinessDesc">-</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Live data evidence</h3>
+        <div class="dataev" id="dataEvidence">-</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== CHAT ============================== -->
+  <section id="viewChat" class="view">
+    <div id="chatArea">
+      <div class="chips" id="chips">
+        <button data-q="What was my average sleep score in the last month?">Sleep score last month</button>
+        <button data-q="How much have I run this month compared with last month?">Running volume</button>
+        <button data-q="Am I progressing or showing signs of fatigue?">Progress or fatigue</button>
+        <button data-q="What is my readiness to push to the next level?">Readiness</button>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <div class="pipeline-indicator" id="pipelineIndicator">
+        Five-agent pipeline running...
+        <div class="steps" id="pipelineSteps">
+          <span class="step" data-a="Lumen">1 Lumen</span>
+          <span class="step" data-a="Prism">2 Prism</span>
+          <span class="step" data-a="Canvas">3 Canvas</span>
+          <span class="step" data-a="Echo">4 Echo</span>
+          <span class="step" data-a="Nexus">5 Nexus</span>
+        </div>
+      </div>
+      <div class="inputrow">
+        <input id="chatInput" placeholder="Ask about your live training and recovery data..." autocomplete="off" />
+        <button class="primary" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="footnote">Athlete Insight Lab (AIL) - educational prototype. Data is the AIL demonstration dataset (Google Sheets), queried live at run time. Chat answers are produced by the pipeline Lumen &rarr; Prism &rarr; Canvas &rarr; Echo &rarr; Nexus.</div>
+
+<script>
+/* ==================================================================
+   CONFIG
+   ================================================================== */
+const CONFIG = {
+  apiBase: "https://ailcodebase.vercel.app",
+  sheets: {
+    id: "1MZCLWcd_CYuvPrd4iV3YL8FVAip1tF9E6njJnpu2nIY",
+    activitiesGid: "960494473",
+    sleepGid: "401471431"
+  },
+  agents: [
+    { name: "Lumen", role: "Researcher" },
+    { name: "Prism", role: "Designer" },
+    { name: "Canvas", role: "Maker" },
+    { name: "Echo", role: "Communicator" },
+    { name: "Nexus", role: "Manager" }
+  ]
+};
+
+const sheetsUrl = (gid) =>
+  `https://docs.google.com/spreadsheets/d/${CONFIG.sheets.id}/export?format=csv&gid=${gid}`;
+
+/* ==================================================================
+   LIVE DATA: fetch + parse + compute (all at query time from Google)
+   ================================================================== */
+function parseCSV(text) {
+  const rows = []; let row = []; let field = ""; let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+      else field += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      if (row.some(f => f.trim() !== "")) rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.some(f => f.trim() !== "")) rows.push(row);
+  return rows;
+}
+
+function toNum(v) {
+  if (v === undefined || v === null) return null;
+  let s = String(v).trim().replace(/"/g, "").replace(/\s+/g, "");
+  if (s === "--" || s === "" || s === "-") return null;
+  if (s.includes(",")) s = s.replace(",", ".");
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function hmsToMinutes(v) {
+  if (v === undefined || v === null) return null;
+  const parts = String(v).trim().split(":");
+  if (parts.length === 3) { const [h, m, s] = parts.map(parseFloat); if ([h, m, s].every(x => Number.isFinite(x))) return h * 60 + m + s / 60; }
+  if (parts.length === 2) { const [m, s] = parts.map(parseFloat); if ([m, s].every(x => Number.isFinite(x))) return m + s / 60; }
+  return null;
+}
+
+function sleepDurToMinutes(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  const h = s.match(/(\d+)\s*h/); const m = s.match(/(\d+)\s*min/);
+  return (h ? parseInt(h[1], 10) : 0) * 60 + (m ? parseInt(m[1], 10) : 0);
+}
+
+function parseActivityDate(v) {
+  if (!v) return null;
+  const m = String(v).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})[ ,](\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const [, mo, d, yy, hh, mm] = m;
+  const year = parseInt(yy, 10) >= 70 ? 1900 + parseInt(yy, 10) : 2000 + parseInt(yy, 10);
+  return new Date(year, parseInt(mo, 10) - 1, parseInt(d, 10), parseInt(hh, 10), parseInt(mm, 10));
+}
+
+function isoWeekKey(d) {
+  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+  const y = date.getFullYear();
+  const week = Math.ceil(((date - new Date(y, 0, 1)) / 86400000 + 1) / 7);
+  return { year: y, week };
+}
+
+function fmtWeek(d) {
+  const k = isoWeekKey(d);
+  return `${k.year}-W${String(k.week).padStart(2, "0")}`;
+}
+
+async function loadLiveData() {
+  const fetchedAt = new Date();
+  const [actCsv, sleepCsv] = await Promise.all([
+    fetch(sheetsUrl(CONFIG.sheets.activitiesGid)).then(r => r.text()),
+    fetch(sheetsUrl(CONFIG.sheets.sleepGid)).then(r => r.text())
+  ]);
+  const act = parseCSV(actCsv);
+  const sleep = parseCSV(sleepCsv);
+  const h = act[0];
+  const I = (name) => h.indexOf(name);
+  const iType = I("Activity Type"), iDate = I("Date"), iDist = I("Distance"), iTime = I("Time"),
+        iHr = I("Avg HR"), iTss = h.findIndex(x => x && x.trim().startsWith("Training Stress")),
+        iCad = I("Avg Cadence"), iTitle = I("Title");
+
+  const activities = [];
+  for (let r = 1; r < act.length; r++) {
+    const row = act[r];
+    const date = parseActivityDate(row[iDate]);
+    activities.push({
+      type: (row[iType] || "").trim(),
+      title: (row[iTitle] || "").trim(),
+      date,
+      distance: toNum(row[iDist]),
+      minutes: hmsToMinutes(row[iTime]),
+      hr: toNum(row[iHr]),
+      tss: toNum(iTss !== -1 ? row[iTss] : undefined),
+      cadence: toNum(row[iCad])
+    });
+  }
+
+  const sh = sleep[0];
+  const siScore = sh.indexOf("Avg Score"), siDur = sh.indexOf("Avg Duration"),
+        siNeed = sh.indexOf("Avg Sleep Need"), siQuality = sh.indexOf("Avg Quality"), siDate = sh.indexOf("Date");
+  const sleepWeeks = [];
+  for (let r = 1; r < sleep.length; r++) {
+    const row = sleep[r];
+    sleepWeeks.push({
+      label: (row[siDate] || "").trim(),
+      score: toNum(row[siScore]),
+      minutes: sleepDurToMinutes(row[siDur]),
+      need: sleepDurToMinutes(row[siNeed]),
+      quality: (row[siQuality] || "").trim()
+    });
+  }
+
+  // Aggregations ---------------------------------------------------------
+  const byType = {}; let totalDist = 0, totalMin = 0, hrSum = 0, hrCount = 0, tssSum = 0, runCount = 0;
+  for (const a of activities) {
+    byType[a.type] = (byType[a.type] || 0) + 1;
+    if (a.distance !== null && a.distance > 0) totalDist += a.distance;
+    if (a.minutes !== null) totalMin += a.minutes;
+    if (a.hr !== null) { hrSum += a.hr; hrCount++; }
+    if (a.tss !== null) tssSum += a.tss;
+    if (/run/i.test(a.type)) runCount++;
+  }
+
+  // Weekly distance (running only) ---------------------------------------
+  const weekly = {};
+  const dated = activities.filter(a => a.date && /run/i.test(a.type) && a.distance !== null);
+  for (const a of dated) {
+    const k = fmtWeek(a.date);
+    weekly[k] = (weekly[k] || 0) + a.distance;
+  }
+  const weekLabels = Object.keys(weekly).sort();
+  const weekVals = weekLabels.map(k => Math.round(weekly[k] * 100) / 100);
+
+  // Simple linear forecast for the next 4 weeks --------------------------
+  const n = weekVals.length;
+  let slope = 0;
+  if (n >= 2) {
+    const x = weekLabels.map((_, i) => i);
+    const meanX = (n - 1) / 2, meanY = weekVals.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (i - meanX) * (weekVals[i] - meanY); den += (i - meanX) * (i - meanX); }
+    slope = den ? num / den : 0;
+  }
+  const forecast = [];
+  const intercept = n ? weekVals[n - 1] - slope * (n - 1) : 0;
+  for (let i = 1; i <= 4; i++) forecast.push(Math.max(0, Math.round((intercept + slope * (n - 1 + i)) * 100) / 100));
+
+  // HR by type -----------------------------------------------------------
+  const hrByType = {};
+  const hrCountByType = {};
+  for (const a of activities) {
+    if (a.hr !== null) {
+      hrByType[a.type] = (hrByType[a.type] || 0) + a.hr;
+      hrCountByType[a.type] = (hrCountByType[a.type] || 0) + 1;
+    }
+  }
+  const hrTypes = Object.keys(hrByType).filter(t => (hrCountByType[t] || 0) >= 3);
+  const hrVals = hrTypes.map(t => Math.round(hrByType[t] / hrCountByType[t]));
+
+  // Readiness heuristic ---------------------------------------------------
+  const distByDate = dated.sort((a, b) => a.date - b.date);
+  const now = new Date();
+  const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+  const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, now.getDate());
+  const recent = distByDate.filter(a => a.date >= monthAgo).reduce((s, a) => s + a.distance, 0);
+  const prior = distByDate.filter(a => a.date >= twoMonthsAgo && a.date < monthAgo).reduce((s, a) => s + a.distance, 0);
+  const loadTrend = prior > 0 ? recent / prior : (recent > 0 ? 1 : 0);
+  const recentSleep = sleepWeeks.slice(0, 4).map(w => w.score).filter(x => x !== null);
+  const sleepAvg = recentSleep.length ? recentSleep.reduce((a, b) => a + b, 0) / recentSleep.length : 75;
+
+  let readiness, rColor, rLabel, rDesc;
+  if (loadTrend > 1.35 && sleepAvg < 72) {
+    readiness = 30; rColor = "var(--red)"; rLabel = "High load / low recovery";
+    rDesc = `Your running volume jumped ${Math.round((loadTrend - 1) * 100)}% recently while sleep is averaging ${Math.round(sleepAvg)}. This looks like a fatigue risk - consider holding volume and prioritising recovery.`;
+  } else if (loadTrend > 1.35) {
+    readiness = 62; rColor = "var(--amber)"; rLabel = "Rising load - monitor";
+    rDesc = `Volume is up ${Math.round((loadTrend - 1) * 100)}% vs the previous month. Progress is great, but let recovery keep pace - check how you feel before pushing again.`;
+  } else if (sleepAvg >= 75) {
+    readiness = 84; rColor = "var(--green)"; rLabel = "Ready to progress";
+    rDesc = `Steady training with good sleep (avg ${Math.round(sleepAvg)}). You have a healthy base to consider the next performance level.`;
+  } else {
+    readiness = 58; rColor = "var(--amber)"; rLabel = "Build recovery";
+    rDesc = `Training is consistent but sleep is averaging ${Math.round(sleepAvg)}. Closing the sleep gap is the highest-leverage step right now.`;
+  }
+
+  return {
+    fetchedAt,
+    activities,
+    sleepWeeks,
+    kpis: {
+      totalDist: Math.round(totalDist * 100) / 100,
+      totalMin: Math.round(totalMin),
+      activities: activities.length,
+      runs: runCount,
+      avgHr: hrCount ? Math.round(hrSum / hrCount) : null,
+      tss: Math.round(tssSum)
+    },
+    charts: {
+      weekLabels, weekVals, forecast,
+      sleepLabels: sleepWeeks.slice(0, 8).map(w => w.label).reverse(),
+      sleepVals: sleepWeeks.slice(0, 8).map(w => w.score).reverse(),
+      typeLabels: Object.keys(byType), typeVals: Object.keys(byType).map(t => byType[t]),
+      hrTypes, hrVals
+    },
+    readiness: { value: readiness, color: rColor, label: rLabel, desc: rDesc, loadTrend, sleepAvg },
+    rows: { activities: act.length - 1, sleep: sleep.length - 1 }
+  };
+}
+
+/* ==================================================================
+   DASHBOARD RENDERING
+   ================================================================== */
+let liveState = null;
+let charts = {};
+
+function renderDashboard(d) {
+  document.getElementById("dashLoading").style.display = "none";
+  document.getElementById("dashContent").style.display = "block";
+
+  document.getElementById("metaSource").textContent = "Google Sheets - AIL dataset (live)";
+  document.getElementById("metaFetched").textContent = d.fetchedAt.toLocaleString();
+  document.getElementById("metaRows").textContent = `${d.rows.activities} activities / ${d.rows.sleep} sleep weeks`;
+
+  const k = d.kpis;
+  const kpis = [
+    { label: "Total distance", value: k.totalDist.toLocaleString(), unit: " km", note: "across all activities" },
+    { label: "Activities", value: k.activities, note: `${k.runs} runs` },
+    { label: "Total duration", value: Math.floor(k.totalMin / 60), unit: " h", note: `${k.totalMin % 60} min` },
+    { label: "Avg heart rate", value: k.avgHr ?? "-", note: "bpm across sessions" },
+    { label: "Training Stress", value: k.tss.toLocaleString(), note: "total TSS" }
+  ];
+  document.getElementById("kpis").innerHTML = kpis.map(p =>
+    `<div class="kpi"><div class="label">${p.label}</div><div class="value">${p.value}<span style="font-size:15px;color:var(--muted)">${p.unit || ""}</span></div><div class="note">${p.note}</div></div>`
+  ).join("");
+
+  // Weekly distance + forecast
+  const labels = [...d.charts.weekLabels, ...Array(4).fill("").map((_, i) => "forecast +" + (i + 1))];
+  charts.distance = new Chart(document.getElementById("chartDistance"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Weekly distance (km)", data: [...d.charts.weekVals, ...Array(4).fill(null)], borderColor: "#38bdf8", backgroundColor: "rgba(56,189,248,.15)", fill: true, tension: .35, pointRadius: 3 },
+        { label: "Forecast (km)", data: [...Array(d.charts.weekVals.length).fill(null), ...d.charts.forecast], borderColor: "#a78bfa", borderDash: [6, 4], tension: .35, pointRadius: 3 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#8ea3c0" } } },
+      scales: { x: { ticks: { color: "#8ea3c0", maxRotation: 45 }, grid: { color: "#1e2a44" } }, y: { ticks: { color: "#8ea3c0" }, grid: { color: "#1e2a44" } } } }
+  });
+
+  // Sleep
+  charts.sleep = new Chart(document.getElementById("chartSleep"), {
+    type: "line",
+    data: { labels: d.charts.sleepLabels, datasets: [{ label: "Sleep score", data: d.charts.sleepVals, borderColor: "#34d399", backgroundColor: "rgba(52,211,153,.15)", fill: true, tension: .35, pointRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#8ea3c0" } } },
+      scales: { x: { ticks: { color: "#8ea3c0" }, grid: { color: "#1e2a44" } }, y: { min: 40, max: 100, ticks: { color: "#8ea3c0" }, grid: { color: "#1e2a44" } } } }
+  });
+
+  // Activity types
+  const pal = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#f87171", "#22d3ee", "#fb923c", "#c084fc", "#4ade80"];
+  charts.type = new Chart(document.getElementById("chartType"), {
+    type: "doughnut",
+    data: { labels: d.charts.typeLabels, datasets: [{ data: d.charts.typeVals, backgroundColor: d.charts.typeLabels.map((_, i) => pal[i % pal.length]), borderColor: "#111a2e", borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { color: "#8ea3c0", boxWidth: 10 } } } }
+  });
+
+  // HR by type
+  charts.hr = new Chart(document.getElementById("chartHr"), {
+    type: "bar",
+    data: { labels: d.charts.hrTypes, datasets: [{ label: "Avg HR (bpm)", data: d.charts.hrVals, backgroundColor: "rgba(56,189,248,.65)", borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { color: "#8ea3c0" }, grid: { display: false } }, y: { ticks: { color: "#8ea3c0" }, grid: { color: "#1e2a44" } } } }
+  });
+
+  // Readiness
+  const rd = d.readiness;
+  document.getElementById("readinessNum").textContent = rd.value;
+  document.getElementById("readinessLabel").textContent = rd.label;
+  document.getElementById("readinessLabel").style.color = rd.color;
+  document.getElementById("readinessBar").style.width = rd.value + "%";
+  document.getElementById("readinessBar").style.background = rd.color;
+  document.getElementById("readinessDesc").textContent = rd.desc;
+
+  document.getElementById("dataEvidence").innerHTML = `
+    <div>Data source: <b>Google Sheets - Athlete Insight Lab dataset</b> (fictional wearable device)</div>
+    <div>Retrieved live at: <b>${d.fetchedAt.toLocaleString()}</b> (this page queries Google at load / refresh time)</div>
+    <div>Activities sheet: <b>${d.rows.activities} rows</b> | Sleep sheet: <b>${d.rows.sleep} rows</b></div>
+    <div>Live query endpoint: <code>https://docs.google.com/spreadsheets/d/${CONFIG.sheets.id}/export?format=csv&gid=...</code></div>
+    <div>Chat answers are computed by the five-agent pipeline on the backend, which re-queries the same live sheets at every question.</div>`;
+}
+
+async function refreshDashboard() {
+  document.getElementById("dashLoading").style.display = "block";
+  document.getElementById("dashContent").style.display = "none";
+  for (const c of Object.values(charts)) c && c.destroy();
+  charts = {};
+  try {
+    liveState = await loadLiveData();
+    renderDashboard(liveState);
+  } catch (e) {
+    document.getElementById("dashLoading").style.display = "none";
+    document.getElementById("dashContent").style.display = "block";
+    document.getElementById("dataEvidence").innerHTML = `<span class="error">Could not load live data: ${e.message}. Check your connection and that the sheet is public.</span>`;
+  }
+}
+
+/* ==================================================================
+   CHAT
+   ================================================================== */
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderBotMarkdown(text) {
+  const esc = escapeHtml(text);
+  const lines = esc.split("\n");
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith("###")) { if (inList) { out.push("</ul>"); inList = false; } out.push(`<h3>${t.slice(3).trim()}</h3>`); }
+    else if (t.startsWith("**") && t.endsWith("**") && t.length > 4) { if (inList) { out.push("</ul>"); inList = false; } out.push(`<h3>${t.replace(/^\*\*/, "").replace(/\*\*$/, "")}</h3>`); }
+    else if (/^[-*]\s+/.test(t)) {
+      if (!inList) { out.push("<ul>"); inList = true; }
+      out.push(`<li>${t.replace(/^[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</li>`);
+    } else {
+      if (inList) { out.push("</ul>"); inList = false; }
+      if (t === "---" || t === "***" || t === "___") { out.push("<hr style='border-color:var(--line);margin:10px 0;'>"); }
+      else if (t === "") out.push("");
+      else out.push(`<p>${t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`([^`]+)`/g, "<code style='background:var(--panel2);padding:1px 5px;border-radius:4px;'>$1</code>")}</p>`);
+    }
+  }
+  if (inList) out.push("</ul>");
+  return out.join("\n");
+}
+
+function addMsg(role, html) {
+  const m = document.createElement("div");
+  m.className = "msg " + (role === "user" ? "user" : "bot");
+  m.innerHTML = html;
+  document.getElementById("msgs").appendChild(m);
+  document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
+  return m;
+}
+
+async function sendQuestion(question) {
+  question = question.trim();
+  if (!question) return;
+  addMsg("user", escapeHtml(question));
+  document.getElementById("chatInput").value = "";
+
+  const ind = document.getElementById("pipelineIndicator");
+  ind.style.display = "block";
+  const stepsEl = document.getElementById("pipelineSteps");
+  stepsEl.querySelectorAll(".step").forEach(s => s.classList.remove("done", "active"));
+
+  const send = document.getElementById("sendBtn");
+  send.disabled = true;
+  try {
+    const res = await fetch(`${CONFIG.apiBase}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: question })
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `Server error ${res.status}`);
+    }
+    const data = await res.json();
+    stepsEl.querySelectorAll(".step").forEach(s => s.classList.add("done"));
+
+    let html = `<div>${renderBotMarkdown(data.answer)}</div>`;
+    html += `<div class="disc" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px;">
+      Pipeline: ${data.trace.map(t => `<b>${t.agent}</b> (${t.role})`).join(" &rarr; ")} &middot; Decision: ${data.decision} &middot; Data fetched live at ${new Date(data.data.fetchedAt).toLocaleTimeString()}
+    </div>`;
+    html += `<details class="trace"><summary>Show agent pipeline trace</summary>`;
+    for (const t of data.trace) {
+      html += `<div class="agentbox"><b>${t.agent}</b> - ${t.role} (${t.archetype})</div>
+               <div class="agentbox" style="margin-top:2px;">${escapeHtml(t.output.slice(0, 1400))}</div>`;
+    }
+    html += `</details>`;
+    addMsg("bot", html);
+  } catch (err) {
+    addMsg("bot", `<div class="error">Sorry, the pipeline failed: ${escapeHtml(err.message)}</div>`);
+  } finally {
+    ind.style.display = "none";
+    send.disabled = false;
+  }
+}
+
+/* ==================================================================
+   BOOT
+   ================================================================== */
+document.getElementById("tabDashboard").addEventListener("click", () => switchView("dashboard"));
+document.getElementById("tabChat").addEventListener("click", () => switchView("chat"));
+function switchView(v) {
+  document.getElementById("tabDashboard").classList.toggle("active", v === "dashboard");
+  document.getElementById("tabChat").classList.toggle("active", v === "chat");
+  document.getElementById("viewDashboard").classList.toggle("active", v === "dashboard");
+  document.getElementById("viewChat").classList.toggle("active", v === "chat");
+}
+document.getElementById("refreshBtn").addEventListener("click", refreshDashboard);
+document.getElementById("sendBtn").addEventListener("click", () => sendQuestion(document.getElementById("chatInput").value));
+document.getElementById("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendQuestion(document.getElementById("chatInput").value); });
+document.querySelectorAll("#chips button").forEach(b => b.addEventListener("click", () => sendQuestion(b.dataset.q)));
+
+addMsg("bot", `Hello! I am the <b>Athlete Insight Lab</b> team. Ask me anything about your training and recovery data - the five agents (Lumen, Prism, Canvas, Echo, Nexus) will analyse the live Google Sheets data and answer.`);
+
+refreshDashboard();
+</script>
+</body>
+</html>

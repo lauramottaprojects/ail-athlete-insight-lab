@@ -1,0 +1,19 @@
+# Secrets - never commit
+.env
+.env.local
+*.token
+gemini-api-key.txt
+github-token*.txt
+vercel-token*.txt
+
+# Dependencies
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Vercel local
+.vercel/
+
+.vercel
