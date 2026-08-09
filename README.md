@@ -23,7 +23,7 @@ live wearable data into clear running insights. Submission for the H9CEAI Final 
 
 ## Live URLs
 
-- **Frontend (GitHub Pages):** https://lauramottaprojects.github.io/<repo>/
+- **Frontend (GitHub Pages):** https://lauramottaprojects.github.io/ail-agentic-organisation/
 - **Backend (Vercel):** https://ailcodebase.vercel.app (function at `/api/chat`)
 
 ## How the live data connection works
