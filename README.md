@@ -10,6 +10,10 @@ live wearable data into clear running insights. Submission for the H9CEAI Final 
   dashboard load and on every chat question - never hardcoded, never cached.
 - **Chat intelligence:** Gemini 3.1 Flash-Lite, called once per agent through the backend
   proxy. The API key lives only in the Vercel `GEMINI_API_KEY` environment variable.
+- **Multi-turn chat:** the chat keeps the conversation fluid. The client sends the last 20
+  messages of history with every question, and every agent sees that transcript, so
+  follow-ups like "yes", "tell me more" or "what about sleep?" are answered in context
+  instead of being treated as a brand-new topic. A "New chat" button resets the transcript.
 
 ## What is in this repo
 

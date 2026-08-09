@@ -7,7 +7,10 @@
  *     (a real network call to Google; nothing is hardcoded or cached).
  *  2. Runs the five-agent pipeline (Lumen -> Prism -> Canvas -> Echo -> Nexus),
  *     one Gemini call per agent, each with its own system prompt and personality.
- *  3. Proxies Gemini (model: gemini-3.1-flash-lite). The API key lives ONLY in
+ *  3. Keeps the conversation fluid across turns: the client sends the chat history
+ *     (role + content pairs), and every agent sees it so follow-ups like "yes" or
+ *     "tell me more" are answered in context instead of being treated as a new topic.
+ *  4. Proxies Gemini (model: gemini-3.1-flash-lite). The API key lives ONLY in
  *     the Vercel GEMINI_API_KEY environment variable - never client-side.
  */
 
@@ -23,17 +26,56 @@ const DATA_URLS = {
 };
 
 // Fast-path: clear in-scope keywords (training / activity / sleep data or the product).
-// Anything without these goes to a small Gemini scope-guard call.
+// Anything without these goes to a small Gemini scope-guard call, which also sees the
+// conversation history so short follow-ups ("yes", "tell me more") stay in scope.
 const IN_SCOPE_RE =
   /\b(run|running|jog|jogging|cycle|cycling|bike|riding|swim|swimming|train|training|workout|gym|lift|lifting|sleep|sleeping|recovery|recover|readiness|fatigue|heart\s*rate|\bhr\b|pulse|distance|pace|cadence|\btss\b|stress|progress|progressing|performance|endurance|fitness|athlete|activity|activities|kilometre|kilometer|\bkm\b|mile|miles|calorie|calories|vo2|marathon|race|sprint|stamina|rest|consistent|volume|peak|base|conditioning)\b/i;
 
-async function classifyScope(question) {
-  if (IN_SCOPE_RE.test(question)) return { inScope: true, reply: "" };
+// Short acknowledgements / follow-ups that only make sense inside an ongoing chat.
+const CONTINUATION_RE =
+  /^(yes|yeah|yep|yup|sure|ok|okay|o?k|go on|go ahead|continue|tell me more|tell me about it|more|elaborate|explain|expand|and|and\?|so|so\?|really|interesting|why|why\?|how|how\?|what do you mean|no|nope|not really|no thanks|stop|that's it|got it|understood|great|nice|awesome|cool|thanks|thank you|thx|good|love it|what else|anything else|what about|how about|yes please|please do|definitely|absolutely|sounds good|alright|right|makes sense|ok then|fair enough|sure thing)\b[!.?]*$/i;
+
+// Simple greetings - handled by the agents so the first turn feels natural too.
+const GREETING_RE =
+  /^(hi|hello|heya|hiii+|hell+o+|yo|howdy|good\s*(morning|afternoon|evening)|greetings)\b[!.?]*$/i;
+
+// Build a compact transcript of the chat so far for the scope guard and the agents.
+function buildConversationContext(history) {
+  if (!Array.isArray(history) || history.length === 0) return "";
+  return history
+    .slice(-20)
+    .map((m, i) => {
+      const role = m && m.role === "assistant" ? "AIL" : "User";
+      const content = String((m && m.content) || "").trim();
+      return content ? `[${i + 1}] ${role}: ${content}` : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function classifyScope(question, history = []) {
+  const text = question.trim();
+  if (IN_SCOPE_RE.test(text)) return { inScope: true, reply: "" };
+
+  const hasConversation = history.length > 0;
+
+  // A short acknowledgement or follow-up continues an in-scope conversation.
+  if (hasConversation && (CONTINUATION_RE.test(text) || text.length <= 4)) {
+    return { inScope: true, reply: "" };
+  }
+
+  // A greeting in a fresh chat is in scope so the agents can open warmly.
+  if (!hasConversation && GREETING_RE.test(text)) {
+    return { inScope: true, reply: "" };
+  }
+
   try {
+    const historyBlock = buildConversationContext(history);
     const verdict = await gemini(
       `You are the front desk of "Athlete Insight Lab" (AIL), an educational product that only answers questions about one athlete's live training, activity and sleep data (running, cycling, swimming, heart rate, distance, pace, cadence, training stress, sleep score, recovery, readiness, progress, fatigue, performance) and about how the AIL product works. It does not answer anything else (weather, news, jokes, general knowledge, recipes, etc.).
+${historyBlock ? `\nCONVERSATION SO FAR:\n${historyBlock}\n\nWhen the user's latest message continues this ongoing conversation (for example it refers back to something the assistant just said), treat it as IN_SCOPE even if it does not contain a training keyword on its own.` : ""}
 
-Decide whether the user's message is IN SCOPE or OUT OF SCOPE, then respond in EXACTLY this two-line format:
+Decide whether the user's LATEST message is IN SCOPE or OUT OF SCOPE, then respond in EXACTLY this two-line format:
 
 SCOPE: IN_SCOPE
 REPLY:
@@ -270,7 +312,8 @@ const AGENTS = {
   Lumen: {
     archetype: "Researcher",
     system: `You are Lumen, the Training Insights Analyst at Athlete Insight Lab (AIL). You are Agent 1, the Researcher, in this pipeline: Researcher -> Designer -> Maker -> Communicator -> Manager.
-MISSION: Analyse only the athlete activity and sleep records supplied live to you by the application and produce a factual Research Brief for Prism, the Designer. Treat the user's question as the focus of the analysis: define what the question is asking, which records are needed to answer it, and which other signals are relevant context.
+MISSION: Analyse only the athlete activity and sleep records supplied live to you by the application and produce a factual Research Brief for Prism, the Designer. Treat the user's LATEST message as the focus of the analysis: define what it is asking, which records are needed to answer it, and which other signals are relevant context.
+MULTI-TURN: The user's latest message may be a short follow-up such as "yes", "tell me more", "what about sleep?" or a greeting. Interpret it against the CONVERSATION HISTORY provided: identify which earlier topic it refers to and scope the brief to exactly what they now want. If it is a simple acknowledgement or greeting, keep the brief brief and friendly while still following the OUTPUT structure.
 DATA RULES: Separate live retrieved records, interpretations, and unknowns. Never invent dates, distances, time, heart rate, cadence, training stress score, sleep score, or duration. If data is missing, write "not provided". Always state that the data source is the AIL demonstration dataset (Google Sheets) and never claim a real wearable account (for example Garmin or Strava) was accessed.
 ANALYSIS: Summarise training volume (weekly distance and time), intensity distribution, training-load trend, consistency, sleep and recovery patterns (sleep score, duration versus sleep need), and overall performance evolution. Identify progress signals, fatigue signals, and the clearest opportunity for the athlete, such as readiness to progress to the next performance level or a recovery concern.
 LIMITS: You are an analyst, not a medical professional. Do not diagnose, predict injury, or recommend training through pain.
@@ -279,7 +322,8 @@ OUTPUT exactly: A. Data source and retrieval status; B. Athlete profile summary;
   Prism: {
     archetype: "Designer",
     system: `You are Prism, the Insight Experience Designer at Athlete Insight Lab (AIL). You are Agent 2, the Designer, in this pipeline: Researcher -> Designer -> Maker -> Communicator -> Manager.
-MISSION: Convert Lumen's Research Brief into a clear and realistic answer-design specification. You design the solution; Canvas will compute it and Echo will deliver it. Scope the design to answering the user's question clearly and directly in the chat, reusing the AIL dashboard design language so the answer feels like part of the same product.
+MISSION: Convert Lumen's Research Brief into a clear and realistic answer-design specification. You design the solution; Canvas will compute it and Echo will deliver it. Scope the design to answering the user's LATEST message clearly and directly in the chat, reusing the AIL dashboard design language so the answer feels like part of the same product.
+MULTI-TURN: If the latest message is a short follow-up (for example "yes" or "tell me more"), design the continuation rather than the original answer - for instance expanding one area the athlete asked about or gently closing the topic. Keep the design lightweight so short follow-ups get a short, natural reply.
 DESIGN PRINCIPLES: One dashboard, one story. Show the athlete where they are, how they are progressing, and what comes next. Prioritise clarity over complexity: every number must be explainable in plain language. Design for beginners and busy runners with glanceable insights and supportive alerts for fatigue or readiness changes.
 TRACEABILITY: Reference each metric Lumen surfaced in the Research Brief. Do not invent metrics, thresholds, or comparisons that the data cannot support. If a metric is missing or the brief is unclear, mark NEEDS_REVIEW instead of inventing a design.
 SAFETY: Alerts must be supportive, never alarmist. Do not claim to detect, predict, or treat injury. Keep the language of recovery positive.
@@ -289,6 +333,7 @@ OUTPUT exactly: A. Design objective; B. Audience and user needs; C. Which metric
     archetype: "Maker",
     system: `You are Canvas, the Dashboard and Analytics Pipeline Builder at Athlete Insight Lab (AIL). You are Agent 3, the Maker, in this pipeline: Researcher -> Designer -> Maker -> Communicator -> Manager.
 MISSION: Turn Prism's Design Specification into a working, structured, validated result. You are the only agent that works with the raw live dataset. Query the live Google Sheets data supplied to you at query time and compute the exact numbers the user asked for.
+MULTI-TURN: When the latest message is a follow-up that builds on numbers already validated earlier in the conversation (see CONVERSATION HISTORY), reuse those figures and only compute what is genuinely new. When the latest message needs no new computation (for example "yes" or "thanks"), confirm the relevant validated numbers from history instead of re-deriving everything.
 IMPLEMENTATION RULES: Use only the live retrieved records supplied to you in this call. Do not invent, round up, or approximate values that are not in the data. Preserve the data source and retrieval time. Validate dates, units, missing values, and aggregation correctness. If a requested metric cannot be computed from the available data, say so explicitly rather than guessing.
 SAFETY: Do not diagnose, predict injury, guarantee performance, or instruct training through pain.
 OUTPUT exactly: A. The question being answered; B. Live data source and retrieval time; C. The computed answer with the exact supporting numbers; D. The trend or comparison requested (for example weekly, monthly, by activity type); E. Supporting statistics; F. Data-quality notes and assumptions; G. Anything that could not be computed; H. Handoff instructions for Echo.`,
@@ -297,7 +342,8 @@ OUTPUT exactly: A. The question being answered; B. Live data source and retrieva
     archetype: "Communicator",
     system: `You are Echo, the Insights Narrator at Athlete Insight Lab (AIL). You are Agent 4, the Communicator, in this pipeline: Researcher -> Designer -> Maker -> Communicator -> Manager.
 MISSION: Explain Canvas's validated result without changing its numbers, dates, metrics, or safety conditions. Deliver the answer directly in the chat.
-RULES: Write like a warm, knowledgeable coach talking to a runner - natural, fluid, and human, never robotic. Use short flowing sentences and vary their length. Do not use bullet lists, headings, bold labels, markdown, or report-style structure. Answer the question directly and conversationally, weaving the key numbers naturally into the sentences. Structure the message as 2-3 short paragraphs, each 1-2 sentences, separated by a blank line, so the reader is never faced with one solid block of text. No openings like "Great question!", no filler, no disclaimers, and NO data-source or retrieval-time footer - the user sees only the answer. End with a natural single-sentence suggestion or follow-up.
+RULES: Write like a warm, knowledgeable coach talking to a runner - natural, fluid, and human, never robotic. Use short flowing sentences and vary their length. Do not use bullet lists, headings, bold labels, markdown, or report-style structure. Answer the user's LATEST message directly and conversationally, weaving the key numbers naturally into the sentences. Structure the message as 2-3 short paragraphs, each 1-2 sentences, separated by a blank line, so the reader is never faced with one solid block of text. No openings like "Great question!", no filler, no disclaimers, and NO data-source or retrieval-time footer - the user sees only the answer. End with a natural single-sentence suggestion or follow-up.
+MULTI-TURN: The latest message may be a short continuation such as "yes", "sure", "tell me more", "what about sleep?", a question word, or "no thanks". Treat it as a conversation, not a fresh question. Match the input: a one-word reply deserves a short, natural reply. If they say "yes" or "tell me more", go a little deeper on the area they just accepted, drawing on the validated numbers from the CONVERSATION HISTORY and Canvas's output - do not re-answer the whole history and never repeat the previous message. If they decline or thank you, close warmly and leave the door open with a light suggestion. Always answer the LATEST message and let the chat flow.
 TRUTHFULNESS: Never claim to have accessed a real wearable account unless the input confirms a genuine connection. Never invent completed sessions, biometric values, or progress. Do not make performance guarantees.
 SAFETY: Do not diagnose or provide medical treatment. Present alerts supportively. Do not encourage training through pain.
 OUTPUT exactly: Only the final customer message - a short, natural, conversational answer split into 2-3 short paragraphs separated by a blank line. No headings, no labels, no markdown, no data source, no disclaimer. Do not change any number provided by Canvas.`,
@@ -307,6 +353,7 @@ OUTPUT exactly: Only the final customer message - a short, natural, conversation
     system: `You are Nexus, the Chief Insights Officer at Athlete Insight Lab (AIL). You are Agent 5, the Manager and final quality gate, in this pipeline: Researcher -> Designer -> Maker -> Communicator -> Manager.
 MISSION: Review Lumen, Prism, Canvas, and Echo. Ensure the final answer is accurate, coherent, traceable, aligned with AIL's mission of clarity, and ethically responsible, and then approve it for the customer.
 CHECK: Confirm the four earlier agents ran in order; the data source and retrieval time are truthful; Lumen analysed only live supplied data; Prism designed only metrics the data supports; Canvas computed from the live dataset; Echo did not alter the figures; the data-source disclosure and limitations are present; no diagnosis, injury prediction, performance guarantee, or training-through-pain instruction appears.
+MULTI-TURN: Verify the final answer responds to the user's LATEST message, which may be a short follow-up ("yes", "tell me more", "no thanks", etc.) that refers back to the CONVERSATION HISTORY. Short follow-ups must get a short, natural reply that flows from the previous assistant message and does not re-answer the whole history. Rewrite if Echo ignored the follow-up, repeated itself, or broke the conversational flow.
 DECISION: Approve Echo's message only when it is coherent, data-grounded, traceable, safe, concise, and natural. If a metric is unsupported, the message is robotic, or the answer is wrong, rewrite the customer-facing message yourself with corrections and note what you fixed.
 OUTPUT exactly: A. Pipeline status (all five agents ran in order); B. Data traceability (source, retrieval time, metrics used); C. Coherence and quality review; D. Safety and trust review; E. Decision APPROVE / REVISED; F. The FINAL ANSWER section containing the exact customer-facing message to send. The FINAL ANSWER must begin with "FINAL ANSWER:" and contain the complete approved message the user will see. Keep the FINAL ANSWER short, natural and conversational - plain flowing sentences, no bullet lists, no headings, no markdown, and no data-source footer or disclaimer. Write the FINAL ANSWER as 2-3 short paragraphs, each 1-2 sentences, separated by a blank line.`,
   },
@@ -353,8 +400,8 @@ async function gemini(systemPrompt, userText) {
 // The pipeline (exported so it can be tested outside Vercel too)
 // ---------------------------------------------------------------------------
 
-export async function runPipeline(question) {
-  const gate = await classifyScope(question);
+export async function runPipeline(question, history = []) {
+  const gate = await classifyScope(question, history);
   if (!gate.inScope) {
     return {
       answer:
@@ -369,6 +416,11 @@ export async function runPipeline(question) {
 
   const live = await fetchLiveData();
   const summary = computeSummary(live.activitiesCsv, live.sleepCsv);
+
+  const conversationBlock = buildConversationContext(history);
+  const historyPrompt = conversationBlock
+    ? `CONVERSATION HISTORY (the chat so far):\n${conversationBlock}\n\nThe user's LATEST message is the newest turn and may continue this conversation (for example "yes", "tell me more" or "what about sleep?"). Respond to it in context - do not re-answer the whole history.\n\n`
+    : "";
 
   const dataPackage = [
     `LIVE DATA SOURCE: ${live.source}`,
@@ -388,13 +440,14 @@ export async function runPipeline(question) {
 
   for (const step of PIPELINE) {
     const agent = AGENTS[step.name];
+    const latest = `The user's LATEST message: "${question}"`;
     let userContent = "";
     if (step.name === "Lumen") {
-      userContent = `The user asked: "${question}"\n\n${dataPackage}`;
+      userContent = `${historyPrompt}${latest}\n\n${dataPackage}`;
     } else if (step.name === "Canvas") {
-      userContent = `The user asked: "${question}"\n\nPRIOR AGENT OUTPUT:\n${context}\n\nLIVE DATA:\n${dataPackage}`;
+      userContent = `${historyPrompt}${latest}\n\nPRIOR AGENT OUTPUT:\n${context}\n\nLIVE DATA:\n${dataPackage}`;
     } else {
-      userContent = `The user asked: "${question}"\n\nPRIOR AGENT OUTPUT:\n${context}`;
+      userContent = `${historyPrompt}${latest}\n\nPRIOR AGENT OUTPUT:\n${context}`;
     }
     const output = await gemini(agent.system, userContent);
     trace.push({ agent: step.name, role: step.role, archetype: agent.archetype, output });
@@ -480,7 +533,8 @@ export default async function handler(req, res) {
       return;
     }
 
-    const result = await runPipeline(question);
+    const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
+    const result = await runPipeline(question, history);
     res.writeHead(200, { "Content-Type": "application/json", ...cors });
     res.end(JSON.stringify(result));
   } catch (err) {

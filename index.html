@@ -256,6 +256,7 @@
     </div>
     <div class="inputrow">
       <input id="chatInput" placeholder="Ask about your live training and recovery data..." autocomplete="off" />
+      <button id="newChatBtn" title="Clear this conversation and start again">New chat</button>
       <button class="primary" id="sendBtn">Send</button>
     </div>
   </section>
@@ -738,6 +739,10 @@ const dashInd = document.getElementById("dashIndicator");
 const dashSteps = document.getElementById("dashSteps");
 const pipeTimers = {};
 
+// Conversation memory: the chat sends this history with every question so the
+// backend pipeline can answer follow-ups ("yes", "tell me more") in context.
+let chatHistory = [];
+
 function resetSteps(s) {
   s.querySelectorAll(".step").forEach(el => el.classList.remove("done", "active"));
 }
@@ -778,6 +783,9 @@ async function sendQuestion(question) {
   addMsg("user", escapeHtml(question));
   document.getElementById("chatInput").value = "";
 
+  // Send only the prior turns; the current message travels separately.
+  const priorHistory = chatHistory.slice(-20);
+
   const send = document.getElementById("sendBtn");
   send.disabled = true;
   startPipelineAnimation(ind, stepsEl);
@@ -785,7 +793,7 @@ async function sendQuestion(question) {
     const res = await fetch(`${CONFIG.apiBase}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: question })
+      body: JSON.stringify({ message: question, history: priorHistory })
     });
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
@@ -793,14 +801,17 @@ async function sendQuestion(question) {
     }
     const data = await res.json();
 
+    chatHistory.push({ role: "user", content: question });
     if (data.outOfScope) {
       stopPipelineAnimation(stepsEl);
       addMsg("bot", renderBotMarkdown(data.answer));
+      chatHistory.push({ role: "assistant", content: data.answer });
       return;
     }
 
     finishPipelineAnimation(ind, stepsEl);
     addMsg("bot", renderBotMarkdown(data.answer));
+    chatHistory.push({ role: "assistant", content: data.answer });
   } catch (err) {
     stopPipelineAnimation(stepsEl);
     addMsg("bot", `<div class="error">Sorry, the pipeline failed: ${escapeHtml(err.message)}</div>`);
@@ -808,6 +819,13 @@ async function sendQuestion(question) {
     ind.style.display = "none";
     send.disabled = false;
   }
+}
+
+function newChat() {
+  chatHistory = [];
+  document.getElementById("msgs").innerHTML = "";
+  welcome.style.display = "";
+  document.getElementById("chatInput").focus();
 }
 
 /* ==================================================================
@@ -861,6 +879,7 @@ document.getElementById("askBtn").addEventListener("click", () => {
 document.getElementById("refreshBtn").addEventListener("click", refreshDashboard);
 document.getElementById("sendBtn").addEventListener("click", () => sendQuestion(document.getElementById("chatInput").value));
 document.getElementById("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendQuestion(document.getElementById("chatInput").value); });
+document.getElementById("newChatBtn").addEventListener("click", newChat);
 document.querySelectorAll("#chips button").forEach(b => b.addEventListener("click", () => sendQuestion(b.dataset.q)));
 
 setDashBtnLabel(false);

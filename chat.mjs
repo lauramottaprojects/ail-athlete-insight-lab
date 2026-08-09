@@ -32,6 +32,7 @@ function banner() {
   console.log("  Pipeline: Lumen -> Prism -> Canvas -> Echo -> Nexus");
   console.log("  Data: Google Sheets (live, queried at each question)");
   console.log(`  Model: Gemini 3.1 Flash-Lite via backend ${API_BASE}`);
+  console.log("  Conversation memory: follow-ups like 'yes' or 'tell me more' are answered in context.");
   console.log("  Type 'exit' or Ctrl+C to quit.");
   console.log("=".repeat(64) + "\n");
 }
@@ -39,6 +40,7 @@ function banner() {
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 let closed = false;
 let busy = false;
+let history = [];
 rl.on("close", () => { closed = true; if (!busy) process.exit(0); });
 
 function ask(prompt) {
@@ -61,7 +63,7 @@ async function chat() {
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: q }),
+        body: JSON.stringify({ message: q, history: history.slice(-20) }),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
@@ -69,6 +71,8 @@ async function chat() {
       }
       const data = await res.json();
       clearInterval(t);
+      history.push({ role: "user", content: q });
+      history.push({ role: "assistant", content: data.answer });
       console.log("\n");
       console.log("--- AIL ---");
       console.log(data.answer);
