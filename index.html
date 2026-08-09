@@ -655,6 +655,12 @@ async function sendQuestion(question) {
     }
     const data = await res.json();
 
+    if (data.outOfScope) {
+      if (pipeTimer) { clearInterval(pipeTimer); pipeTimer = null; }
+      addMsg("bot", renderBotMarkdown(data.answer));
+      return;
+    }
+
     finishPipelineAnimation();
     addMsg("bot", renderBotMarkdown(data.answer));
   } catch (err) {
