@@ -125,11 +125,29 @@
     background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; outline: none;
   }
   .inputrow input:focus { border-color: var(--accent); }
-  .pipeline-indicator { display: none; font-size: 12.5px; color: var(--muted); margin: 10px 2px; }
-  .pipeline-indicator .steps { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
-  .step { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
-  .step.done { border-color: var(--green); color: var(--green); }
-  .step.active { border-color: var(--accent); color: var(--accent); animation: pulse 1.2s infinite; }
+  .pipeline-indicator { display: none; margin: 10px 0; }
+  .pipeline-indicator .pipeline-title { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+  .pipeline-indicator .steps { display: flex; flex-direction: column; gap: 6px; }
+  .step {
+    display: flex; align-items: center; gap: 9px; padding: 6px 11px;
+    border-radius: 9px; border: 1px solid var(--line); background: var(--panel);
+    font-size: 12.5px; color: var(--muted);
+  }
+  .step .snum { font-weight: 700; color: var(--accent); min-width: 15px; }
+  .step .sname { flex: 1; color: var(--text); }
+  .step .sagent { font-size: 11.5px; }
+  .step .tick {
+    width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; line-height: 1;
+  }
+  .step .tick::after { content: "✓"; color: var(--green); opacity: 0; }
+  .step.active { border-color: var(--accent); }
+  .step.active .snum { animation: pulse 1.2s infinite; }
+  .step.done { border-color: rgba(52,211,153,.55); }
+  .step.done .snum { color: var(--green); }
+  .step.done .tick { border-color: var(--green); }
+  .step.done .tick::after { opacity: 1; }
   details.trace { margin-top: 10px; }
   details.trace summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
   details.trace .agentbox { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 12.5px; white-space: pre-wrap; line-height: 1.5; }
@@ -204,13 +222,13 @@
     </div>
     <div class="msgs" id="msgs"></div>
     <div class="pipeline-indicator" id="pipelineIndicator">
-      Five-agent pipeline running...
+      <div class="pipeline-title">Agents at work</div>
       <div class="steps" id="pipelineSteps">
-        <span class="step" data-a="Lumen">1 Lumen</span>
-        <span class="step" data-a="Prism">2 Prism</span>
-        <span class="step" data-a="Canvas">3 Canvas</span>
-        <span class="step" data-a="Echo">4 Echo</span>
-        <span class="step" data-a="Nexus">5 Nexus</span>
+        <div class="step" data-a="Lumen"><span class="snum">1</span><span class="sname">Check the available data</span><span class="sagent">Lumen</span><span class="tick"></span></div>
+        <div class="step" data-a="Prism"><span class="snum">2</span><span class="sname">Analysing the data</span><span class="sagent">Prism</span><span class="tick"></span></div>
+        <div class="step" data-a="Canvas"><span class="snum">3</span><span class="sname">Put all together</span><span class="sagent">Canvas</span><span class="tick"></span></div>
+        <div class="step" data-a="Echo"><span class="snum">4</span><span class="sname">Build a final message</span><span class="sagent">Echo</span><span class="tick"></span></div>
+        <div class="step" data-a="Nexus"><span class="snum">5</span><span class="sname">Review the final output</span><span class="sagent">Nexus</span><span class="tick"></span></div>
       </div>
     </div>
     <div class="inputrow">
@@ -583,6 +601,38 @@ function addMsg(role, html) {
   return m;
 }
 
+const ind = document.getElementById("pipelineIndicator");
+const stepsEl = document.getElementById("pipelineSteps");
+let pipeTimer = null;
+
+function resetSteps() {
+  stepsEl.querySelectorAll(".step").forEach(s => s.classList.remove("done", "active"));
+}
+
+function setStepState(idx, state) {
+  const all = stepsEl.querySelectorAll(".step");
+  if (idx >= 0 && idx < all.length) all[idx].classList.add(state);
+}
+
+function startPipelineAnimation() {
+  resetSteps();
+  ind.style.display = "block";
+  let i = 0;
+  setStepState(0, "active");
+  pipeTimer = setInterval(() => {
+    i++;
+    if (i >= stepsEl.children.length) { clearInterval(pipeTimer); pipeTimer = null; return; }
+    setStepState(i - 1, "done");
+    setStepState(i, "active");
+  }, 2200);
+}
+
+function finishPipelineAnimation() {
+  if (pipeTimer) { clearInterval(pipeTimer); pipeTimer = null; }
+  stepsEl.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  stepsEl.querySelectorAll(".step").forEach(s => s.classList.add("done"));
+}
+
 async function sendQuestion(question) {
   question = question.trim();
   if (!question) return;
@@ -590,13 +640,9 @@ async function sendQuestion(question) {
   addMsg("user", escapeHtml(question));
   document.getElementById("chatInput").value = "";
 
-  const ind = document.getElementById("pipelineIndicator");
-  ind.style.display = "block";
-  const stepsEl = document.getElementById("pipelineSteps");
-  stepsEl.querySelectorAll(".step").forEach(s => s.classList.remove("done", "active"));
-
   const send = document.getElementById("sendBtn");
   send.disabled = true;
+  startPipelineAnimation();
   try {
     const res = await fetch(`${CONFIG.apiBase}/api/chat`, {
       method: "POST",
@@ -609,15 +655,10 @@ async function sendQuestion(question) {
     }
     const data = await res.json();
 
-    if (data.outOfScope) {
-      addMsg("bot", renderBotMarkdown(data.answer));
-      return;
-    }
-
-    stepsEl.querySelectorAll(".step").forEach(s => s.classList.add("done"));
-
+    finishPipelineAnimation();
     addMsg("bot", renderBotMarkdown(data.answer));
   } catch (err) {
+    if (pipeTimer) { clearInterval(pipeTimer); pipeTimer = null; }
     addMsg("bot", `<div class="error">Sorry, the pipeline failed: ${escapeHtml(err.message)}</div>`);
   } finally {
     ind.style.display = "none";
