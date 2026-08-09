@@ -135,7 +135,6 @@
   }
   .step .snum { font-weight: 700; color: var(--accent); min-width: 15px; }
   .step .sname { flex: 1; color: var(--text); }
-  .step .sagent { font-size: 11.5px; }
   .step .tick {
     width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line);
     display: inline-flex; align-items: center; justify-content: center;
@@ -180,6 +179,16 @@
   <div id="layout">
   <!-- ============================== DASHBOARD (hidden until requested) ============================== -->
   <section id="viewDashboard" class="view">
+    <div class="pipeline-indicator" id="dashIndicator">
+      <div class="pipeline-title">Agents at work</div>
+      <div class="steps" id="dashSteps">
+        <div class="step"><span class="snum">1</span><span class="sname">Checking the available data</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">2</span><span class="sname">Analysing the data</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">3</span><span class="sname">Putting all together</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">4</span><span class="sname">Building a final message</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">5</span><span class="sname">Reviewing the final output</span><span class="tick"></span></div>
+      </div>
+    </div>
     <div id="dashLoading" style="color: var(--muted); padding: 40px 0; text-align:center;">
       <span class="spinner"></span> Loading live data from Google Sheets...
     </div>
@@ -224,11 +233,11 @@
     <div class="pipeline-indicator" id="pipelineIndicator">
       <div class="pipeline-title">Agents at work</div>
       <div class="steps" id="pipelineSteps">
-        <div class="step" data-a="Lumen"><span class="snum">1</span><span class="sname">Check the available data</span><span class="sagent">Lumen</span><span class="tick"></span></div>
-        <div class="step" data-a="Prism"><span class="snum">2</span><span class="sname">Analysing the data</span><span class="sagent">Prism</span><span class="tick"></span></div>
-        <div class="step" data-a="Canvas"><span class="snum">3</span><span class="sname">Put all together</span><span class="sagent">Canvas</span><span class="tick"></span></div>
-        <div class="step" data-a="Echo"><span class="snum">4</span><span class="sname">Build a final message</span><span class="sagent">Echo</span><span class="tick"></span></div>
-        <div class="step" data-a="Nexus"><span class="snum">5</span><span class="sname">Review the final output</span><span class="sagent">Nexus</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">1</span><span class="sname">Checking the available data</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">2</span><span class="sname">Analysing the data</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">3</span><span class="sname">Putting all together</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">4</span><span class="sname">Building a final message</span><span class="tick"></span></div>
+        <div class="step"><span class="snum">5</span><span class="sname">Reviewing the final output</span><span class="tick"></span></div>
       </div>
     </div>
     <div class="inputrow">
@@ -603,34 +612,41 @@ function addMsg(role, html) {
 
 const ind = document.getElementById("pipelineIndicator");
 const stepsEl = document.getElementById("pipelineSteps");
-let pipeTimer = null;
+const dashInd = document.getElementById("dashIndicator");
+const dashSteps = document.getElementById("dashSteps");
+const pipeTimers = {};
 
-function resetSteps() {
-  stepsEl.querySelectorAll(".step").forEach(s => s.classList.remove("done", "active"));
+function resetSteps(s) {
+  s.querySelectorAll(".step").forEach(el => el.classList.remove("done", "active"));
 }
 
-function setStepState(idx, state) {
-  const all = stepsEl.querySelectorAll(".step");
+function setStepState(s, idx, state) {
+  const all = s.querySelectorAll(".step");
   if (idx >= 0 && idx < all.length) all[idx].classList.add(state);
 }
 
-function startPipelineAnimation() {
-  resetSteps();
-  ind.style.display = "block";
+function startPipelineAnimation(showEl, s) {
+  resetSteps(s);
+  showEl.style.display = "block";
   let i = 0;
-  setStepState(0, "active");
-  pipeTimer = setInterval(() => {
+  setStepState(s, 0, "active");
+  if (pipeTimers[s.id]) clearInterval(pipeTimers[s.id]);
+  pipeTimers[s.id] = setInterval(() => {
     i++;
-    if (i >= stepsEl.children.length) { clearInterval(pipeTimer); pipeTimer = null; return; }
-    setStepState(i - 1, "done");
-    setStepState(i, "active");
+    if (i >= s.children.length) { clearInterval(pipeTimers[s.id]); delete pipeTimers[s.id]; return; }
+    setStepState(s, i - 1, "done");
+    setStepState(s, i, "active");
   }, 2200);
 }
 
-function finishPipelineAnimation() {
-  if (pipeTimer) { clearInterval(pipeTimer); pipeTimer = null; }
-  stepsEl.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-  stepsEl.querySelectorAll(".step").forEach(s => s.classList.add("done"));
+function finishPipelineAnimation(showEl, s) {
+  if (pipeTimers[s.id]) { clearInterval(pipeTimers[s.id]); delete pipeTimers[s.id]; }
+  s.querySelectorAll(".step").forEach(el => el.classList.remove("active"));
+  s.querySelectorAll(".step").forEach(el => el.classList.add("done"));
+}
+
+function stopPipelineAnimation(s) {
+  if (pipeTimers[s.id]) { clearInterval(pipeTimers[s.id]); delete pipeTimers[s.id]; }
 }
 
 async function sendQuestion(question) {
@@ -642,7 +658,7 @@ async function sendQuestion(question) {
 
   const send = document.getElementById("sendBtn");
   send.disabled = true;
-  startPipelineAnimation();
+  startPipelineAnimation(ind, stepsEl);
   try {
     const res = await fetch(`${CONFIG.apiBase}/api/chat`, {
       method: "POST",
@@ -656,15 +672,15 @@ async function sendQuestion(question) {
     const data = await res.json();
 
     if (data.outOfScope) {
-      if (pipeTimer) { clearInterval(pipeTimer); pipeTimer = null; }
+      stopPipelineAnimation(stepsEl);
       addMsg("bot", renderBotMarkdown(data.answer));
       return;
     }
 
-    finishPipelineAnimation();
+    finishPipelineAnimation(ind, stepsEl);
     addMsg("bot", renderBotMarkdown(data.answer));
   } catch (err) {
-    if (pipeTimer) { clearInterval(pipeTimer); pipeTimer = null; }
+    stopPipelineAnimation(stepsEl);
     addMsg("bot", `<div class="error">Sorry, the pipeline failed: ${escapeHtml(err.message)}</div>`);
   } finally {
     ind.style.display = "none";
@@ -690,7 +706,13 @@ async function showDashboard() {
   layout.classList.add("split");
   if (!dashLoaded) {
     dashLoaded = true;
-    await refreshDashboard();
+    startPipelineAnimation(dashInd, dashSteps);
+    try {
+      await refreshDashboard();
+    } finally {
+      finishPipelineAnimation(dashInd, dashSteps);
+      setTimeout(() => { dashInd.style.display = "none"; }, 1500);
+    }
   }
   for (const c of Object.values(charts)) c && c.resize();
   setDashBtnLabel(true);
