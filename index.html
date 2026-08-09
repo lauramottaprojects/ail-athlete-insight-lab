@@ -91,45 +91,47 @@
   button.primary:hover { filter: brightness(1.1); box-shadow: 0 8px 28px var(--glow-purple); }
   button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
   .tabs { display: none; }
-  main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
+  main { padding: 14px 24px 24px; max-width: 1280px; margin: 0 auto; }
 
   /* ================= HERO ================= */
   .hero {
     position: relative; overflow: hidden;
     border: 1px solid var(--line-soft); border-radius: 24px;
-    padding: 58px 28px 42px; margin-bottom: 22px; text-align: center;
+    padding: 24px 28px 22px; margin-bottom: 12px; text-align: center;
     background: #0F172A;
     box-shadow: var(--shadow);
   }
   .hero::before { display: none; }
   .hero-bg { display: none; }
   .hero-banner {
-    display: block; width: 100%; height: auto;
+    display: block; width: 100%; max-width: 1000px; height: 260px;
+    margin: 0 auto 18px; border-radius: 18px; object-fit: cover;
+    border: 1px solid var(--line-soft);
   }
   .hero-inner { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; }
   .hero-title {
-    margin: 0 0 14px; font-family: var(--font-head); font-weight: 800;
-    font-size: clamp(28px, 4.6vw, 46px); line-height: 1.12; letter-spacing: -.5px;
+    margin: 0 0 8px; font-family: var(--font-head); font-weight: 800;
+    font-size: clamp(24px, 3.6vw, 38px); line-height: 1.12; letter-spacing: -.5px;
   }
   .hero-title .grad {
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .hero-mission {
-    margin: 0 auto 18px; max-width: 640px;
-    color: #E5E7EB; font-size: 17px; line-height: 1.75;
+    margin: 0 auto 10px; max-width: 640px;
+    color: #E5E7EB; font-size: 16px; line-height: 1.7;
   }
   .hero-mission strong { color: var(--text); }
 
   /* ================= GATE / LOGIN ================= */
-  .gate { padding: 6px 0 2px; }
+  .gate { padding: 4px 0 2px; }
   .gate-card {
     max-width: 560px; margin: 0 auto; text-align: center;
     background: #0F172A;
     border: 1px solid var(--line-soft); border-radius: var(--radius);
-    padding: 36px 24px; box-shadow: var(--shadow);
+    padding: 22px 24px; box-shadow: var(--shadow);
   }
-  .gate-text { color: #E5E7EB; font-size: 16px; line-height: 1.7; margin: 0 0 20px; }
+  .gate-text { color: #E5E7EB; font-size: 15px; line-height: 1.6; margin: 0 0 14px; }
   .gate-btn { font-size: 15px; padding: 13px 36px; letter-spacing: .3px; }
 
   #layout { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
