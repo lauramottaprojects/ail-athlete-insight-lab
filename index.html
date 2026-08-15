@@ -77,6 +77,15 @@
   .spacer { flex: 1; }
   .meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .meta b { color: var(--text); font-weight: 600; }
+  .support-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; font-weight: 700; letter-spacing: .2px;
+    color: #06101f;
+    background: linear-gradient(135deg, var(--amber), #fb923c);
+    border: none; padding: 10px 18px; border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(251,146,60,.3);
+  }
+  .support-btn:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(251,146,60,.4); }
   button {
     font: inherit; cursor: pointer;
     border: 1px solid var(--line); background: var(--panel);
@@ -317,6 +326,7 @@
   </div>
   <span class="live" id="liveBadge" style="display:none;"><span class="dot"></span>Fictional wearable data</span>
   <div class="spacer"></div>
+  <button class="support-btn" id="supportBtn" type="button" style="display:none;">Need Support from a Person? We're Here to Help.</button>
 </header>
 
 <main>
@@ -952,7 +962,7 @@ async function sendQuestion(question) {
     const data = await res.json();
 
     chatHistory.push({ role: "user", content: question });
-    if (data.outOfScope) {
+    if (data.outOfScope || data.humanSupport) {
       stopPipelineAnimation(stepsEl);
       addMsg("bot", renderBotMarkdown(data.answer));
       chatHistory.push({ role: "assistant", content: data.answer });
@@ -1033,12 +1043,21 @@ document.getElementById("chatInput").addEventListener("keydown", (e) => { if (e.
 document.getElementById("newChatBtn").addEventListener("click", newChat);
 document.querySelectorAll("#chips button").forEach(b => b.addEventListener("click", () => sendQuestion(b.dataset.q)));
 
+const SUPPORT_PROMPT = "I need support from a person. Can someone from the team contact me by email?";
+
 document.getElementById("loginBtn").addEventListener("click", () => {
   document.getElementById("gate").style.display = "none";
   document.getElementById("liveBadge").style.display = "inline-flex";
+  document.getElementById("supportBtn").style.display = "inline-flex";
   layout.style.display = "grid";
   document.getElementById("welcome").scrollIntoView({ behavior: "smooth", block: "start" });
   document.getElementById("chatInput").focus();
+});
+
+document.getElementById("supportBtn").addEventListener("click", () => {
+  layout.style.display = "grid";
+  sendQuestion(SUPPORT_PROMPT);
+  document.getElementById("chatArea").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 setDashBtnLabel(false);

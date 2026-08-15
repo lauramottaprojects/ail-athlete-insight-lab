@@ -39,6 +39,10 @@ const CONTINUATION_RE =
 const GREETING_RE =
   /^(hi|hello|heya|hiii+|hell+o+|yo|howdy|good\s*(morning|afternoon|evening)|greetings)\b[!.?]*$/i;
 
+// Human support requests - short-circuited so a real person always follows up by email.
+const SUPPORT_RE =
+  /\b(human\s*(assistance|support|contact|help)|support\s*(from\s*a\s*person|team|human)|talk\s*to\s*(a|the|someone|somebody)\s*(person|human|agent|representative|team|real\s*person)|speak\s*to\s*(a|the|someone|somebody)\s*(person|human|agent|representative|team|real\s*person)|contact\s*(me|us)\s*by\s*email|someone\s*(from|on)\s*(the\s*)?(team|support)\s*(contact|reach)|need\s*(a|the|some)\s*(person|human|real\s*person))\b/i;
+
 // Build a compact transcript of the chat so far for the scope guard and the agents.
 function buildConversationContext(history) {
   if (!Array.isArray(history) || history.length === 0) return "";
@@ -401,6 +405,17 @@ async function gemini(systemPrompt, userText) {
 // ---------------------------------------------------------------------------
 
 export async function runPipeline(question, history = []) {
+  if (SUPPORT_RE.test(question)) {
+    return {
+      answer:
+        "Thanks for reaching out - I've passed your request to the team. A real person from Athlete Insight Lab will contact you by email shortly to help you personally. In the meantime, I'm still here to help with any questions about your training, activity and sleep data.",
+      decision: "HUMAN_SUPPORT",
+      data: { source: DATA_SOURCE, fetchedAt: new Date().toISOString(), summary: null },
+      trace: [],
+      humanSupport: true,
+    };
+  }
+
   const gate = await classifyScope(question, history);
   if (!gate.inScope) {
     return {
